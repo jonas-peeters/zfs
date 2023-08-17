@@ -986,6 +986,10 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 
 	zfs_dbgmsg("zpl_fadvise: %d", advice);
 
+	dmu_buf_t *zdb;
+	dmu_buf_impl_t *db;
+	dnode_t *dn;
+
 	switch (advice) {
 	case POSIX_FADV_SEQUENTIAL:
 	case POSIX_FADV_WILLNEED:
@@ -1076,10 +1080,8 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 	 * to the file to be uncompressed. These flags are persistent.
 	 */
 	case ZFS_FADV_DONTCOMPRESS: // ZFS_FADV_DONTCOMPRESS:
-		dmu_buf_t *zdb = sa_get_db(zp->z_sa_hdl);
-
-		dmu_buf_impl_t *db = (dmu_buf_impl_t *)zdb;
-		dnode_t *dn;
+		zdb = sa_get_db(zp->z_sa_hdl);
+		db = (dmu_buf_impl_t *)zdb;
 
 		DB_DNODE_ENTER(db);
 		dn = DB_DNODE(db);
@@ -1088,10 +1090,8 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		DB_DNODE_EXIT(db);
 		break;
 	case ZFS_FADV_DOCOMPRESS: // COMPRESS:
-		dmu_buf_t *zdb = sa_get_db(zp->z_sa_hdl);
-
-		dmu_buf_impl_t *db = (dmu_buf_impl_t *)zdb;
-		dnode_t *dn;
+		zdb = sa_get_db(zp->z_sa_hdl);
+		db = (dmu_buf_impl_t *)zdb;
 
 		DB_DNODE_ENTER(db);
 		dn = DB_DNODE(db);
