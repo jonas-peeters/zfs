@@ -30,6 +30,7 @@
 #include <linux/fs.h>
 #include <sys/arc_impl.h>
 #include <sys/file.h>
+#include <sys/dbuf.h>
 #include <sys/dmu_objset.h>
 #include <sys/zfs_znode.h>
 #include <sys/zfs_vfsops.h>
@@ -924,6 +925,46 @@ zpl_ioctl_getversion(struct file *filp, void __user *arg)
 #define ZFS_FADV_DOCOMPRESS 8
 #define ZFS_FADV_DONTCOMPRESS 9
 
+static int 
+disable_compression_for_dnode(dnode_t *dn)
+{
+	dmu_tx_t *tx = dmu_tx_create(dn->dn_objset);
+	dmu_tx_hold_bonus(tx, dn->dn_object);
+	dmu_tx_hold_write(tx, dn->dn_object, 0, 0);
+	int err = dmu_tx_assign(tx, TXG_NOWAIT);
+	if (err != 0) {
+		zfs_dbgmsg("Error %d on dmu_tx_assign", err);
+		dmu_tx_abort(tx);
+		return (err);
+	}
+
+	zfs_dbgmsg("Disabling compression for dnode");
+	dmu_object_set_compress(dn->dn_objset, dn->dn_object, ZIO_COMPRESS_OFF, tx);
+
+	dmu_tx_commit(tx);
+	return 0;
+}
+
+static int 
+enable_compression_for_dnode(dnode_t *dn)
+{
+	dmu_tx_t *tx = dmu_tx_create(dn->dn_objset);
+	dmu_tx_hold_bonus(tx, dn->dn_object);
+	dmu_tx_hold_write(tx, dn->dn_object, 0, 0);
+	int err = dmu_tx_assign(tx, TXG_NOWAIT);
+	if (err != 0) {
+		zfs_dbgmsg("Error %d on dmu_tx_assign", err);
+		dmu_tx_abort(tx);
+		return (err);
+	}
+
+	zfs_dbgmsg("Disabling compression for dnode");
+	dmu_object_set_compress(dn->dn_objset, dn->dn_object, ZIO_COMPRESS_ON, tx);
+
+	dmu_tx_commit(tx);
+	return 0;
+}
+
 #ifdef HAVE_FILE_FADVISE
 static int
 zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
@@ -942,6 +983,8 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 
 	if ((error = zpl_enter_verify_zp(zfsvfs, zp, FTAG)) != 0)
 		return (error);
+
+	zfs_dbgmsg("zpl_fadvise: %d", advice);
 
 	switch (advice) {
 	case POSIX_FADV_SEQUENTIAL:
@@ -1032,7 +1075,30 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 	 * be compressed. ZFS_FADV_DONTCOMPRESS will cause all future writes
 	 * to the file to be uncompressed. These flags are persistent.
 	 */
-	//case ZFS_FADV_DOCOMPRESS:
+	case ZFS_FADV_DONTCOMPRESS: // ZFS_FADV_DONTCOMPRESS:
+		dmu_buf_t *zdb = sa_get_db(zp->z_sa_hdl);
+
+		dmu_buf_impl_t *db = (dmu_buf_impl_t *)zdb;
+		dnode_t *dn;
+
+		DB_DNODE_ENTER(db);
+		dn = DB_DNODE(db);
+		zfs_dbgmsg("Disabeling compression on dnode");
+		error = disable_compression_for_dnode(dn);
+		DB_DNODE_EXIT(db);
+		break;
+	case ZFS_FADV_DOCOMPRESS: // COMPRESS:
+		dmu_buf_t *zdb = sa_get_db(zp->z_sa_hdl);
+
+		dmu_buf_impl_t *db = (dmu_buf_impl_t *)zdb;
+		dnode_t *dn;
+
+		DB_DNODE_ENTER(db);
+		dn = DB_DNODE(db);
+		zfs_dbgmsg("Enable compression on dnode");
+		error = enable_compression_for_dnode(dn);
+		DB_DNODE_EXIT(db);
+		break;
 	default:
 		error = -EINVAL;
 		break;
