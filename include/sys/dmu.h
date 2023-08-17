@@ -887,8 +887,10 @@ extern uint_t zfs_max_recordsize;
 /*
  * Asynchronously try to read in the data.
  */
+void dmu_prefetch_with_flags(objset_t *os, uint64_t object, int64_t level, 
+    uint64_t offset, uint64_t len, zio_priority_t pri, int aflags);
 void dmu_prefetch(objset_t *os, uint64_t object, int64_t level, uint64_t offset,
-	uint64_t len, enum zio_priority pri);
+    uint64_t len, zio_priority_t pri);
 void dmu_prefetch_dnode(objset_t *os, uint64_t object, enum zio_priority pri);
 
 typedef struct dmu_object_info {

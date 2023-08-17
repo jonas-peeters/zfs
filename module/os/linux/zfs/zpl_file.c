@@ -28,6 +28,7 @@
 #include <linux/compat.h>
 #endif
 #include <linux/fs.h>
+#include <sys/arc_impl.h>
 #include <sys/file.h>
 #include <sys/dmu_objset.h>
 #include <sys/zfs_znode.h>
@@ -920,6 +921,9 @@ zpl_ioctl_getversion(struct file *filp, void __user *arg)
 	return (copy_to_user(arg, &generation, sizeof (generation)));
 }
 
+#define ZFS_FADV_DOCOMPRESS 8
+#define ZFS_FADV_DONTCOMPRESS 9
+
 #ifdef HAVE_FILE_FADVISE
 static int
 zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
@@ -958,12 +962,77 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		dmu_prefetch(os, zp->z_id, 0, offset, len,
 		    ZIO_PRIORITY_ASYNC_READ);
 		break;
-	case POSIX_FADV_NORMAL:
+	/*
+	 * For random access patterns, we want to load prefetch the data
+	 * into the ARC, if the file is small enough to fit in the currently
+	 * empty space in the ARC, so that we don't have to evict other
+	 * files that might still be in use.
+	 */
 	case POSIX_FADV_RANDOM:
-	case POSIX_FADV_DONTNEED:
-	case POSIX_FADV_NOREUSE:
-		/* ignored for now */
+		// Get length of file that is read
+		if (len == 0)
+			len = i_size_read(ip) - offset;
+		// Free space in the ARC
+		uint64_t free_space = arc_free_memory();
+
+		// If the file is small enough to fit in the ARC, prefetch it
+		if (free_space > len) {
+			// Prefetch the data
+			dmu_prefetch(os, zp->z_id, 0, offset, len, ZIO_PRIORITY_ASYNC_READ);
+			break;
+		}
+
+		// Check if L2ARC is available
+//		if (L2ARC_dev_list->list_size > 0) {
+//			// Prefetch the data into the L2ARC
+//			dmu_prefetch(os, zp->z_id, 0, offset, len, ZIO_PRIORITY_ASYNC_READ, 
+//				ARC_FLAG_L2CACHE);
+//			break;
+//		}
+
 		break;
+	/*
+	 * For POSIX_FADV_DONTNEED the caller is indicating that the file
+	 * will not be accessed in the near future. We can use this hint
+	 * to evict the file from the ARC. 
+	 */
+	case POSIX_FADV_DONTNEED:
+		arc_buf_t *arc_buf = os->os_phys_buf;
+		if (arc_buf == NULL)
+			break;
+
+		arc_buf_hdr_t *arc_buf_hdr = arc_buf->b_hdr;
+		if (arc_buf_hdr == NULL)
+			break;
+
+		// HDR has L1HDR
+		if (arc_buf_hdr->b_flags & ARC_FLAG_HAS_L1HDR) {
+			uint64_t evicted;
+			arc_evict_hdr(arc_buf_hdr, &evicted);
+			break;
+		}
+
+		break;
+	case POSIX_FADV_NORMAL:
+		break;
+	case POSIX_FADV_NOREUSE:
+		if (len == 0)
+			len = i_size_read(ip) - offset;
+		
+		dmu_prefetch_with_flags(os, zp->z_id, 0, offset, len, 
+			ZIO_PRIORITY_ASYNC_READ, ARC_FLAG_UNCACHED);
+
+
+		break;
+	/*
+	 * ZFS_FADV_DOCOMPRESS and ZFS_FADV_DONTCOMPRESS are zfs specific
+	 * and are used to control compression on a per file basis.
+	 *
+	 * ZFS_FADV_DOCOMPRESS will cause all future writes to the file to
+	 * be compressed. ZFS_FADV_DONTCOMPRESS will cause all future writes
+	 * to the file to be uncompressed. These flags are persistent.
+	 */
+	//case ZFS_FADV_DOCOMPRESS:
 	default:
 		error = -EINVAL;
 		break;

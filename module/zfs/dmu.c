@@ -32,6 +32,7 @@
  * Copyright (c) 2021, 2022 by Pawel Jakub Dawidek
  */
 
+#include <sys/arc.h>
 #include <sys/dmu.h>
 #include <sys/dmu_impl.h>
 #include <sys/dmu_tx.h>
@@ -708,8 +709,8 @@ dmu_buf_rele_array(dmu_buf_t **dbp_fake, int numbufs, const void *tag)
  * is currently synchronous.
  */
 void
-dmu_prefetch(objset_t *os, uint64_t object, int64_t level, uint64_t offset,
-    uint64_t len, zio_priority_t pri)
+dmu_prefetch_with_flags(objset_t *os, uint64_t object, int64_t level, 
+uint64_t offset, uint64_t len, zio_priority_t pri, int aflags)
 {
 	dnode_t *dn;
 	int64_t level2 = level;
@@ -758,12 +759,19 @@ dmu_prefetch(objset_t *os, uint64_t object, int64_t level, uint64_t offset,
 	}
 
 	for (uint64_t i = start; i < end; i++)
-		dbuf_prefetch(dn, level, i, pri, 0);
+		dbuf_prefetch(dn, level, i, pri, aflags);
 	for (uint64_t i = start2; i < end2; i++)
-		dbuf_prefetch(dn, level2, i, pri, 0);
+		dbuf_prefetch(dn, level2, i, pri, aflags);
 	rw_exit(&dn->dn_struct_rwlock);
 
 	dnode_rele(dn, FTAG);
+}
+
+void
+dmu_prefetch(objset_t *os, uint64_t object, int64_t level, uint64_t offset,
+    uint64_t len, zio_priority_t pri)
+{
+	dmu_prefetch_with_flags(os, object, level, offset, len, pri, 0);
 }
 
 /*

@@ -283,6 +283,7 @@ arc_buf_t *arc_loan_raw_buf(spa_t *spa, uint64_t dsobj, boolean_t byteorder,
 void arc_return_buf(arc_buf_t *buf, const void *tag);
 void arc_loan_inuse_buf(arc_buf_t *buf, const void *tag);
 void arc_buf_destroy(arc_buf_t *buf, const void *tag);
+int64_t arc_evict_hdr(arc_buf_hdr_t *hdr, uint64_t *real_evicted);
 void arc_buf_info(arc_buf_t *buf, arc_buf_info_t *abi, int state_index);
 uint64_t arc_buf_size(arc_buf_t *buf);
 uint64_t arc_buf_lsize(arc_buf_t *buf);

@@ -3913,7 +3913,7 @@ arc_buf_destroy(arc_buf_t *buf, const void *tag)
  * buffers (the headers are not freed there).  For ghost states it includes
  * only the evicted headers size.
  */
-static int64_t
+int64_t
 arc_evict_hdr(arc_buf_hdr_t *hdr, uint64_t *real_evicted)
 {
 	arc_state_t *evicted_state, *state;
