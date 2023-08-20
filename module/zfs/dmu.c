@@ -702,21 +702,27 @@ dmu_buf_rele_array(dmu_buf_t **dbp_fake, int numbufs, const void *tag)
  * it too long, prefetch the first dmu_prefetch_max bytes as requested, while
  * for the rest only a higher level, also fitting within dmu_prefetch_max.  It
  * should primarily help random reads, since for long sequential reads there is
- * a speculative prefetcher.
+ * a speculative prefetcher. If required, the caller can override the default
+ * dmu_prefetch_max value by passing a non-zero value in 
+ * dmu_prefetch_max_override.
  *
  * Note that if the indirect blocks above the blocks being prefetched are not
  * in cache, they will be asynchronously read in.  Dnode read by dnode_hold()
  * is currently synchronous.
  */
 void
-dmu_prefetch_with_flags(objset_t *os, uint64_t object, int64_t level, 
-uint64_t offset, uint64_t len, zio_priority_t pri, int aflags)
+dmu_prefetch_impl(objset_t *os, uint64_t object, int64_t level, 
+uint64_t offset, uint64_t len, zio_priority_t pri, int aflags, 
+uint64_t dmu_prefetch_max_override)
 {
 	dnode_t *dn;
 	int64_t level2 = level;
 	uint64_t start, end, start2, end2;
 
-	if (dmu_prefetch_max == 0 || len == 0) {
+	uint64_t local_dmu_prefetch_max = dmu_prefetch_max_override ? 
+		dmu_prefetch_max_override : (uint64_t) dmu_prefetch_max;
+
+	if (local_dmu_prefetch_max == 0 || len == 0) {
 		dmu_prefetch_dnode(os, object, pri);
 		return;
 	}
@@ -733,20 +739,20 @@ uint64_t offset, uint64_t len, zio_priority_t pri, int aflags)
 		/*
 		 * The object has multiple blocks.  Calculate the full range
 		 * of blocks [start, end2) and then split it into two parts,
-		 * so that the first [start, end) fits into dmu_prefetch_max.
+		 * so that the first [start, end) fits into local_dmu_prefetch_max.
 		 */
 		start = dbuf_whichblock(dn, level, offset);
 		end2 = dbuf_whichblock(dn, level, offset + len - 1) + 1;
 		uint8_t ibs = dn->dn_indblkshift;
 		uint8_t bs = (level == 0) ? dn->dn_datablkshift : ibs;
-		uint_t limit = P2ROUNDUP(dmu_prefetch_max, 1 << bs) >> bs;
+		uint64_t limit = P2ROUNDUP(local_dmu_prefetch_max, 1 << bs) >> bs;
 		start2 = end = MIN(end2, start + limit);
 
 		/*
-		 * Find level2 where [start2, end2) fits into dmu_prefetch_max.
+		 * Find level2 where [start2, end2) fits into local_dmu_prefetch_max.
 		 */
 		uint8_t ibps = ibs - SPA_BLKPTRSHIFT;
-		limit = P2ROUNDUP(dmu_prefetch_max, 1 << ibs) >> ibs;
+		limit = P2ROUNDUP(local_dmu_prefetch_max, 1 << ibs) >> ibs;
 		do {
 			level2++;
 			start2 = P2ROUNDUP(start2, 1 << ibps) >> ibps;
@@ -771,7 +777,7 @@ void
 dmu_prefetch(objset_t *os, uint64_t object, int64_t level, uint64_t offset,
     uint64_t len, zio_priority_t pri)
 {
-	dmu_prefetch_with_flags(os, object, level, offset, len, pri, 0);
+	dmu_prefetch_impl(os, object, level, offset, len, pri, 0, 0);
 }
 
 /*

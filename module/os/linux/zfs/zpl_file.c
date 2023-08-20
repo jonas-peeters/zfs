@@ -966,6 +966,8 @@ enable_compression_for_dnode(dnode_t *dn)
 }
 
 #ifdef HAVE_FILE_FADVISE
+uint64_t default_dmu_prefetch_max = 8 * SPA_MAXBLOCKSIZE;
+
 static int
 zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 {
@@ -989,6 +991,8 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 	dmu_buf_t *zdb;
 	dmu_buf_impl_t *db;
 	dnode_t *dn;
+	uint64_t arc_free_space;
+	uint64_t prefetch_max;
 
 	switch (advice) {
 	case POSIX_FADV_SEQUENTIAL:
@@ -1006,8 +1010,11 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		if (len == 0)
 			len = i_size_read(ip) - offset;
 
-		dmu_prefetch(os, zp->z_id, 0, offset, len,
-		    ZIO_PRIORITY_ASYNC_READ);
+		arc_free_space = arc_free_memory();
+		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
+
+		dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
+		    ZIO_PRIORITY_ASYNC_READ, 0, prefetch_max);
 		break;
 	/*
 	 * For random access patterns, we want to load prefetch the data
@@ -1020,12 +1027,14 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		if (len == 0)
 			len = i_size_read(ip) - offset;
 		// Free space in the ARC
-		uint64_t free_space = arc_free_memory();
+		arc_free_space = arc_free_memory();
+		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 
 		// If the file is small enough to fit in the ARC, prefetch it
-		if (free_space > len) {
+		if (arc_free_space > len) {
 			// Prefetch the data
-			dmu_prefetch(os, zp->z_id, 0, offset, len, ZIO_PRIORITY_ASYNC_READ);
+			dmu_prefetch_impl(os, zp->z_id, 0, offset, len, ZIO_PRIORITY_ASYNC_READ,
+				0, prefetch_max);
 			break;
 		}
 
@@ -1065,9 +1074,12 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 	case POSIX_FADV_NOREUSE:
 		if (len == 0)
 			len = i_size_read(ip) - offset;
+
+		arc_free_space = arc_free_memory();
+		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 		
-		dmu_prefetch_with_flags(os, zp->z_id, 0, offset, len, 
-			ZIO_PRIORITY_ASYNC_READ, ARC_FLAG_UNCACHED);
+		dmu_prefetch_impl(os, zp->z_id, 0, offset, len, 
+			ZIO_PRIORITY_ASYNC_READ, ARC_FLAG_UNCACHED, prefetch_max);
 
 
 		break;
