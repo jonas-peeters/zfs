@@ -5224,11 +5224,15 @@ arc_access(arc_buf_hdr_t *hdr, arc_flags_t arc_flags, boolean_t hit)
 		 */
 		ASSERT0(hdr->b_l1hdr.b_arc_access);
 		hdr->b_l1hdr.b_arc_access = now;
-		if (HDR_UNCACHED(hdr)) {
+		if (HDR_UNCACHED(hdr) && !now_prefetch) {
 			new_state = arc_uncached;
 			DTRACE_PROBE1(new_state__uncached, arc_buf_hdr_t *,
 			    hdr);
 		} else {
+			/*if (HDR_PRESCIENT_PREFETCH(hdr)) {
+				arc_hdr_clear_flags(hdr, ARC_FLAG_PRESCIENT_PREFETCH);
+				ARCSTAT_BUMP(arcstat_prescient_prefetch);
+			}*/
 			new_state = arc_mru;
 			DTRACE_PROBE1(new_state__mru, arc_buf_hdr_t *, hdr);
 		}
