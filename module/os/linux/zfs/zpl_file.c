@@ -1015,6 +1015,8 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 
 		dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
 		    ZIO_PRIORITY_ASYNC_READ, ARC_FLAG_PRESCIENT_PREFETCH, prefetch_max);
+		dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
+		    ZIO_PRIORITY_ASYNC_READ, ARC_FLAG_PRESCIENT_PREFETCH, prefetch_max);
 		break;
 	/*
 	 * For random access patterns, we want to load prefetch the data
