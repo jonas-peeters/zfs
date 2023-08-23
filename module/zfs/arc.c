@@ -5662,6 +5662,7 @@ arc_read(zio_t *pio, spa_t *spa, const blkptr_t *bp,
     arc_read_done_func_t *done, void *private, zio_priority_t priority,
     int zio_flags, arc_flags_t *arc_flags, const zbookmark_phys_t *zb)
 {
+	zfs_dbgmsg("Arc read for block %llu %llu with flags %d", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1], *arc_flags);
 	arc_buf_hdr_t *hdr = NULL;
 	kmutex_t *hash_lock = NULL;
 	zio_t *rzio;
@@ -6167,6 +6168,7 @@ top:
 			}
 		}
 
+		zfs_dbgmsg("Zio read for block %llu %llu with flags %d", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1], *arc_flags);
 		rzio = zio_read(pio, spa, bp, hdr_abd, size,
 		    arc_read_done, hdr, priority, zio_flags, zb);
 		acb->acb_zio_head = rzio;
