@@ -3625,6 +3625,82 @@ dbuf_prefetch(dnode_t *dn, int64_t level, uint64_t blkid, zio_priority_t prio,
 }
 
 /*
+ * Request arc eviction for the given block. If the block is already evicted,
+ * this is a no-op. If the block is cached, it will be evicted asynchronously.
+ */
+int
+dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
+{
+	blkptr_t bp;
+	int epbs, nlevels, curlevel;
+	uint64_t curblkid;
+
+	ASSERT(blkid != DMU_BONUS_BLKID);
+	ASSERT(RW_LOCK_HELD(&dn->dn_struct_rwlock));
+
+	if (blkid > dn->dn_maxblkid)
+		return (1);
+
+	if (level == 0 && dnode_block_freed(dn, blkid))
+		return (1);
+
+	/*
+	 * This dnode hasn't been written to disk yet, so we don't want to evict
+	 * anything.
+	 */
+	nlevels = dn->dn_phys->dn_nlevels;
+	if (level >= nlevels || dn->dn_phys->dn_nblkptr == 0)
+		return (1);
+
+	epbs = dn->dn_phys->dn_indblkshift - SPA_BLKPTRSHIFT;
+	if (dn->dn_phys->dn_maxblkid < blkid << (epbs * level))
+		return (1);
+
+	dmu_buf_impl_t *db = dbuf_find(dn->dn_objset, dn->dn_object,
+	    level, blkid, NULL);
+	if (db == NULL) {
+		mutex_exit(&db->db_mtx);
+		/*
+		 * This dbuf does not exist. Needs no eviction.
+		 */
+		return (1);
+	}
+
+	/*
+	 * Find the closest ancestor (indirect block) of the target block
+	 * that is present in the cache.  In this indirect block, we will
+	 * find the bp that is at curlevel, curblkid.
+	 */
+	curlevel = level;
+	curblkid = blkid;
+	while (curlevel < nlevels - 1) {
+		int parent_level = curlevel + 1;
+		uint64_t parent_blkid = curblkid >> epbs;
+		dmu_buf_impl_t *db;
+
+		if (dbuf_hold_impl(dn, parent_level, parent_blkid,
+		    FALSE, TRUE, FTAG, &db) == 0) {
+			blkptr_t *bpp = db->db_buf->b_data;
+			bp = bpp[P2PHASE(curblkid, 1 << epbs)];
+			dbuf_rele(db, FTAG);
+			break;
+		}
+
+		curlevel = parent_level;
+		curblkid = parent_blkid;
+	}
+
+	if (curlevel == nlevels - 1) {
+		/* No cached indirect blocks found. */
+		ASSERT3U(curblkid, <, dn->dn_phys->dn_nblkptr);
+		bp = dn->dn_phys->dn_blkptr[curblkid];
+	}
+
+	arc_evict(dn->dn_objset->os_spa, &bp);
+	return (0);
+}
+
+/*
  * Helper function for dbuf_hold_impl() to copy a buffer. Handles
  * the case of encrypted, compressed and uncompressed buffers by
  * allocating the new buffer, respectively, with arc_alloc_raw_buf(),

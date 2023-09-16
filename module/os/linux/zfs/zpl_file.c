@@ -988,6 +988,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 
 	zfs_dbgmsg("zpl_fadvise: %d", advice);
 
+
 	dmu_buf_t *zdb;
 	dmu_buf_impl_t *db;
 	dnode_t *dn;
@@ -1013,8 +1014,6 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		arc_free_space = arc_free_memory();
 		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 
-		dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
-		    ZIO_PRIORITY_ASYNC_READ, ARC_FLAG_PRESCIENT_PREFETCH, prefetch_max);
 		dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
 		    ZIO_PRIORITY_ASYNC_READ, ARC_FLAG_PRESCIENT_PREFETCH, prefetch_max);
 		break;
@@ -1056,21 +1055,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 	 * to evict the file from the ARC. 
 	 */
 	case POSIX_FADV_DONTNEED:
-		arc_buf_t *arc_buf = os->os_phys_buf;
-		if (arc_buf == NULL)
-			break;
-
-		arc_buf_hdr_t *arc_buf_hdr = arc_buf->b_hdr;
-		if (arc_buf_hdr == NULL)
-			break;
-
-		// HDR has L1HDR
-		if (arc_buf_hdr->b_flags & ARC_FLAG_HAS_L1HDR) {
-			uint64_t evicted;
-			arc_evict_hdr(arc_buf_hdr, &evicted);
-			break;
-		}
-
+		dmu_arc_evict(os, zp->z_id, 0, offset, len);
 		break;
 	case POSIX_FADV_NORMAL:
 		break;

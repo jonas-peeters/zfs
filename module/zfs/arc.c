@@ -1009,7 +1009,7 @@ buf_discard_identity(arc_buf_hdr_t *hdr)
 	hdr->b_birth = 0;
 }
 
-static arc_buf_hdr_t *
+arc_buf_hdr_t *
 buf_hash_find(uint64_t spa, const blkptr_t *bp, kmutex_t **lockp)
 {
 	const dva_t *dva = BP_IDENTITY(bp);

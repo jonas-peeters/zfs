@@ -363,6 +363,7 @@ int dbuf_prefetch_impl(struct dnode *dn, int64_t level, uint64_t blkid,
     void *arg);
 int dbuf_prefetch(struct dnode *dn, int64_t level, uint64_t blkid,
     zio_priority_t prio, arc_flags_t aflags);
+int dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid);
 
 void dbuf_add_ref(dmu_buf_impl_t *db, const void *tag);
 boolean_t dbuf_try_add_ref(dmu_buf_t *db, objset_t *os, uint64_t obj,

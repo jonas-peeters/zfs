@@ -293,6 +293,7 @@ int arc_released(arc_buf_t *buf);
 void arc_buf_sigsegv(int sig, siginfo_t *si, void *unused);
 void arc_buf_freeze(arc_buf_t *buf);
 void arc_buf_thaw(arc_buf_t *buf);
+arc_buf_hdr_t * buf_hash_find(uint64_t spa, const blkptr_t *bp, kmutex_t **lockp);
 #ifdef ZFS_DEBUG
 int arc_referenced(arc_buf_t *buf);
 #else

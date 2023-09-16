@@ -797,6 +797,38 @@ dmu_prefetch_dnode(objset_t *os, uint64_t object, zio_priority_t pri)
 }
 
 /*
+ * For the given object and range, we want to issue arc evictions for each 
+ * block in the range. 
+ */
+void
+dmu_arc_evict(objset_t *os, uint64_t object, int64_t level, 
+uint64_t offset, uint64_t len)
+{
+	dnode_t *dn;
+	uint64_t start, end;
+
+	if (dnode_hold(os, object, FTAG, &dn) != 0)
+		return;
+
+	rw_enter(&dn->dn_struct_rwlock, RW_READER);
+	if (dn->dn_datablkshift != 0) {
+		/* The object has multiple blocks. */
+		start = dbuf_whichblock(dn, level, offset);
+		end = dbuf_whichblock(dn, level, offset + len - 1) + 1;
+	} else {
+		/* There is only one block. Evict it or nothing. */
+		start = 0;
+		end = start + (level == 0 && offset < dn->dn_datablksz);
+	}
+
+	for (uint64_t i = start; i < end; i++)
+		dbuf_arc_evict(dn, level, i);
+	rw_exit(&dn->dn_struct_rwlock);
+
+	dnode_rele(dn, FTAG);
+}
+
+/*
  * Get the next "chunk" of file data to free.  We traverse the file from
  * the end so that the file gets shorter over time (if we crashes in the
  * middle, this will leave us in a better state).  We find allocated file
