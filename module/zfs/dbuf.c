@@ -3645,8 +3645,7 @@ dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
 		return (1);
 
 	/*
-	 * This dnode hasn't been written to disk yet, so we don't want to evict
-	 * anything.
+	 * This dnode hasn't been written to disk yet, so we don't want to evict it.
 	 */
 	nlevels = dn->dn_phys->dn_nlevels;
 	if (level >= nlevels || dn->dn_phys->dn_nblkptr == 0)
@@ -3655,16 +3654,6 @@ dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
 	epbs = dn->dn_phys->dn_indblkshift - SPA_BLKPTRSHIFT;
 	if (dn->dn_phys->dn_maxblkid < blkid << (epbs * level))
 		return (1);
-
-	dmu_buf_impl_t *db = dbuf_find(dn->dn_objset, dn->dn_object,
-	    level, blkid, NULL);
-	if (db == NULL) {
-		mutex_exit(&db->db_mtx);
-		/*
-		 * This dbuf does not exist. Needs no eviction.
-		 */
-		return (1);
-	}
 
 	/*
 	 * Find the closest ancestor (indirect block) of the target block
@@ -3696,7 +3685,7 @@ dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
 		bp = dn->dn_phys->dn_blkptr[curblkid];
 	}
 
-	arc_evict(dn->dn_objset->os_spa, &bp);
+	arc_evict_blk(dn->dn_objset->os_spa, &bp);
 	return (0);
 }
 

@@ -1055,6 +1055,9 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 	 * to evict the file from the ARC. 
 	 */
 	case POSIX_FADV_DONTNEED:
+		if (len == 0)
+			len = i_size_read(ip) - offset;
+
 		dmu_arc_evict(os, zp->z_id, 0, offset, len);
 		break;
 	case POSIX_FADV_NORMAL:

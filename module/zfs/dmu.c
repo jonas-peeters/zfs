@@ -807,6 +807,9 @@ uint64_t offset, uint64_t len)
 	dnode_t *dn;
 	uint64_t start, end;
 
+	if (len == 0)
+		return;
+
 	if (dnode_hold(os, object, FTAG, &dn) != 0)
 		return;
 

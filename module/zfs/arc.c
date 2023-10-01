@@ -4037,6 +4037,23 @@ arc_evict_hdr(arc_buf_hdr_t *hdr, uint64_t *real_evicted)
 	return (bytes_evicted);
 }
 
+void
+arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
+	kmutex_t *hash_lock = NULL;
+	uint64_t guid = spa_load_guid(spa);
+	boolean_t embedded_bp = !!BP_IS_EMBEDDED(bp);
+
+	if (!embedded_bp) {
+		hdr = buf_hash_find(guid, bp, &hash_lock);
+	}
+
+	if (hdr != NULL && HDR_HAS_L1HDR(hdr)) {
+		uint64_t bytes_evicted;
+		arc_evict_hdr(hdr, &bytes_evicted);
+		mutex_exit(hash_lock);
+	}
+}
+
 static void
 arc_set_need_free(void)
 {
@@ -5662,7 +5679,6 @@ arc_read(zio_t *pio, spa_t *spa, const blkptr_t *bp,
     arc_read_done_func_t *done, void *private, zio_priority_t priority,
     int zio_flags, arc_flags_t *arc_flags, const zbookmark_phys_t *zb)
 {
-	zfs_dbgmsg("Arc read for block %llu %llu with flags %d", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1], *arc_flags);
 	arc_buf_hdr_t *hdr = NULL;
 	kmutex_t *hash_lock = NULL;
 	zio_t *rzio;
@@ -5725,7 +5741,6 @@ top:
 	if (hdr != NULL && HDR_HAS_L1HDR(hdr) && (HDR_HAS_RABD(hdr) ||
 	    (hdr->b_l1hdr.b_pabd != NULL && !encrypted_read))) {
 		boolean_t is_data = !HDR_ISTYPE_METADATA(hdr);
-		zfs_dbgmsg("L1 cache hit for block %llu %llu", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1]);
 		if (HDR_IO_IN_PROGRESS(hdr)) {
 			if (*arc_flags & ARC_FLAG_CACHED_ONLY) {
 				mutex_exit(hash_lock);
@@ -5862,7 +5877,6 @@ top:
 		*arc_flags |= ARC_FLAG_CACHED;
 		goto done;
 	} else {
-		zfs_dbgmsg("L1 cache miss for block %llu %llu", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1]);
 		uint64_t lsize = BP_GET_LSIZE(bp);
 		uint64_t psize = BP_GET_PSIZE(bp);
 		arc_callback_t *acb;
@@ -5900,11 +5914,9 @@ top:
 				mutex_exit(hash_lock);
 				buf_discard_identity(hdr);
 				arc_hdr_destroy(hdr);
-				zfs_dbgmsg("Restarting IO request for block %llu %llu", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1]);
 				goto top; /* restart the IO request */
 			}
 		} else {
-			zfs_dbgmsg("Block %llu %llu is in the ghost cache", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1]);
 			/*
 			 * This block is in the ghost cache or encrypted data
 			 * was requested and we didn't have it. If it was
@@ -5938,7 +5950,6 @@ top:
 				 */
 				cv_wait(&hdr->b_l1hdr.b_cv, hash_lock);
 				mutex_exit(hash_lock);
-				zfs_dbgmsg("Restarting IO request for block %llu %llu", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1]);
 				goto top;
 			}
 		}
@@ -5990,7 +6001,6 @@ top:
 			arc_hdr_set_flags(hdr, ARC_FLAG_INDIRECT);
 		ASSERT(!GHOST_STATE(hdr->b_l1hdr.b_state));
 
-		zfs_dbgmsg("Preparing ACB for block %llu %llu", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1]);
 		acb = kmem_zalloc(sizeof (arc_callback_t), KM_SLEEP);
 		acb->acb_done = done;
 		acb->acb_private = private;
@@ -6052,7 +6062,6 @@ top:
 		    spa->spa_l2cache.sav_count > 0;
 
 		if (vd != NULL && spa_has_l2 && !(l2arc_norw && devw)) {
-			zfs_dbgmsg("L2 Arc ops for block %llu %llu", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1]);
 			/*
 			 * Read from the L2ARC if the following are true:
 			 * 1. The L2ARC vdev was previously cached.
@@ -6174,7 +6183,6 @@ top:
 			}
 		}
 
-		zfs_dbgmsg("Zio read for block %llu %llu with flags %d", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1], *arc_flags);
 		rzio = zio_read(pio, spa, bp, hdr_abd, size,
 		    arc_read_done, hdr, priority, zio_flags, zb);
 		acb->acb_zio_head = rzio;
@@ -6192,7 +6200,6 @@ top:
 	}
 
 out:
-	zfs_dbgmsg("Jump to out for block %llu %llu", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1]);
 	/* embedded bps don't actually go to disk */
 	if (!embedded_bp)
 		spa_read_history_add(spa, zb, *arc_flags);
@@ -6200,7 +6207,6 @@ out:
 	return (rc);
 
 done:
-	zfs_dbgmsg("Jump to done for block %llu %llu", (unsigned long long int)bp->blk_dva[0].dva_word[0], (unsigned long long int)bp->blk_dva[0].dva_word[1]);
 	if (done)
 		done(NULL, zb, bp, buf, private);
 	if (pio && rc != 0) {
