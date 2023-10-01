@@ -4039,6 +4039,7 @@ arc_evict_hdr(arc_buf_hdr_t *hdr, uint64_t *real_evicted)
 
 void
 arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
+	arc_buf_hdr_t *hdr = NULL;
 	kmutex_t *hash_lock = NULL;
 	uint64_t guid = spa_load_guid(spa);
 	boolean_t embedded_bp = !!BP_IS_EMBEDDED(bp);
