@@ -4062,6 +4062,7 @@ arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 		if (HDR_HAS_L1HDR(hdr)) {
 			uint64_t bytes_evicted;
 			arc_evict_hdr(hdr, &bytes_evicted);
+			zfs_dbgmsg("arc_evict_blk: evicted %llu bytes", bytes_evicted);
 		} else {
 			zfs_dbgmsg("arc_evict_blk: hdr %p has no L1", hdr);
 		}
