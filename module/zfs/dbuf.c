@@ -3483,6 +3483,7 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
     zio_priority_t prio, arc_flags_t aflags, dbuf_prefetch_fn cb,
     void *arg)
 {
+	zfs_dbgmsg("prefetching %llu:%llu:%llu", dn->dn_object, level, blkid);
 	blkptr_t bp;
 	int epbs, nlevels, curlevel;
 	uint64_t curblkid;
@@ -3620,7 +3621,6 @@ int
 dbuf_prefetch(dnode_t *dn, int64_t level, uint64_t blkid, zio_priority_t prio,
     arc_flags_t aflags)
 {
-
 	return (dbuf_prefetch_impl(dn, level, blkid, prio, aflags, NULL, NULL));
 }
 
@@ -3631,6 +3631,8 @@ dbuf_prefetch(dnode_t *dn, int64_t level, uint64_t blkid, zio_priority_t prio,
 int
 dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
 {
+	zfs_dbgmsg("evicting %llu:%llu:%llu", dn->dn_object, level, blkid);
+
 	blkptr_t bp;
 	int epbs, nlevels, curlevel;
 	uint64_t curblkid;

@@ -715,6 +715,8 @@ dmu_prefetch_impl(objset_t *os, uint64_t object, int64_t level,
 uint64_t offset, uint64_t len, zio_priority_t pri, int aflags, 
 uint64_t dmu_prefetch_max_override)
 {
+	zfs_dbgmsg("dmu_arc_evict: object %llu, level %llu, offset %llu, len %llu", 
+		object, level, offset, len);
 	dnode_t *dn;
 	int64_t level2 = level;
 	uint64_t start, end, start2, end2;
@@ -804,6 +806,8 @@ void
 dmu_arc_evict(objset_t *os, uint64_t object, int64_t level, 
 uint64_t offset, uint64_t len)
 {
+	zfs_dbgmsg("dmu_arc_evict: object %llu, level %llu, offset %llu, len %llu", 
+		object, level, offset, len);
 	dnode_t *dn;
 	uint64_t start, end;
 
