@@ -4044,6 +4044,16 @@ arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 	uint64_t guid = spa_load_guid(spa);
 	boolean_t embedded_bp = !!BP_IS_EMBEDDED(bp);
 
+	// Log physical block address
+	zfs_dbgmsg("arc_evict_blk: %p %p %p %p %p %p", 
+		bp->blk_dva[0].dva_word[0],
+		bp->blk_dva[0].dva_word[1],
+		bp->blk_dva[1].dva_word[0],
+		bp->blk_dva[1].dva_word[1],
+		bp->blk_dva[2].dva_word[0],
+		bp->blk_dva[2].dva_word[1]
+	);
+
 	if (!embedded_bp) {
 		hdr = buf_hash_find(guid, bp, &hash_lock);
 	}
@@ -5699,6 +5709,16 @@ arc_read(zio_t *pio, spa_t *spa, const blkptr_t *bp,
 	boolean_t no_buf = *arc_flags & ARC_FLAG_NO_BUF;
 	arc_buf_t *buf = NULL;
 	int rc = 0;
+
+	// Log physical block address
+	zfs_dbgmsg("arc_read: %p %p %p %p %p %p", 
+		bp->blk_dva[0].dva_word[0],
+		bp->blk_dva[0].dva_word[1],
+		bp->blk_dva[1].dva_word[0],
+		bp->blk_dva[1].dva_word[1],
+		bp->blk_dva[2].dva_word[0],
+		bp->blk_dva[2].dva_word[1]
+	);
 
 	ASSERT(!embedded_bp ||
 	    BPE_GET_ETYPE(bp) == BP_EMBEDDED_TYPE_DATA);
