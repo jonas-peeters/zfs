@@ -4048,10 +4048,16 @@ arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 		hdr = buf_hash_find(guid, bp, &hash_lock);
 	}
 
-	if (hdr != NULL && HDR_HAS_L1HDR(hdr)) {
-		uint64_t bytes_evicted;
-		arc_evict_hdr(hdr, &bytes_evicted);
+	if (hdr != NULL) {
+		if (HDR_HAS_L1HDR(hdr)) {
+			uint64_t bytes_evicted;
+			arc_evict_hdr(hdr, &bytes_evicted);
+		} else {
+			zfs_dbgmsg("arc_evict_blk: hdr %p has no L1", hdr);
+		}
 		mutex_exit(hash_lock);
+	} else {
+		zfs_dbgmsg("arc_evict_blk: no hdr for bp %p", bp);
 	}
 }
 
