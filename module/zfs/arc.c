@@ -4045,7 +4045,7 @@ arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 	boolean_t embedded_bp = !!BP_IS_EMBEDDED(bp);
 
 	// Log physical block address
-	zfs_dbgmsg("arc_evict_blk: %llu %llu %llu %llu %llu %llu", 
+	zfs_dbgmsg("%llu %llu %llu %llu %llu %llu", 
 		bp->blk_dva[0].dva_word[0],
 		bp->blk_dva[0].dva_word[1],
 		bp->blk_dva[1].dva_word[0],
@@ -5711,7 +5711,7 @@ arc_read(zio_t *pio, spa_t *spa, const blkptr_t *bp,
 	int rc = 0;
 
 	// Log physical block address
-	zfs_dbgmsg("arc_read: %llu %llu %llu %llu %llu %llu", 
+	zfs_dbgmsg("%llu %llu %llu %llu %llu %llu", 
 		bp->blk_dva[0].dva_word[0],
 		bp->blk_dva[0].dva_word[1],
 		bp->blk_dva[1].dva_word[0],

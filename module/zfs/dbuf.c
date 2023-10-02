@@ -3599,6 +3599,14 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 
 		SET_BOOKMARK(&zb, ds != NULL ? ds->ds_object : DMU_META_OBJSET,
 		    dn->dn_object, curlevel, curblkid);
+		zfs_dbgmsg("issuing arc read for %llu %llu %llu %llu %llu %llu", 
+			bp.blk_dva[0].dva_word[0],
+			bp.blk_dva[0].dva_word[1],
+			bp.blk_dva[1].dva_word[0],
+			bp.blk_dva[1].dva_word[1],
+			bp.blk_dva[2].dva_word[0],
+			bp.blk_dva[2].dva_word[1]
+		);
 		(void) arc_read(dpa->dpa_zio, dpa->dpa_spa,
 		    &bp, dbuf_prefetch_indirect_done, dpa,
 		    ZIO_PRIORITY_SYNC_READ,
