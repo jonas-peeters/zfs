@@ -3367,14 +3367,14 @@ dbuf_issue_final_prefetch(dbuf_prefetch_arg_t *dpa, blkptr_t *bp)
 	ASSERT3U(dpa->dpa_curlevel, ==, BP_GET_LEVEL(bp));
 	ASSERT3U(dpa->dpa_curlevel, ==, dpa->dpa_zb.zb_level);
 	ASSERT(dpa->dpa_zio != NULL);
-	zfs_dbgmsg("issuing arc read for %llu %llu %llu %llu %llu %llu", 
-		bp->blk_dva[0].dva_word[0],
-		bp->blk_dva[0].dva_word[1],
-		bp->blk_dva[1].dva_word[0],
-		bp->blk_dva[1].dva_word[1],
-		bp->blk_dva[2].dva_word[0],
-		bp->blk_dva[2].dva_word[1]
-	);
+	// zfs_dbgmsg("issuing arc read for %llu %llu %llu %llu %llu %llu", 
+	// 	bp->blk_dva[0].dva_word[0],
+	// 	bp->blk_dva[0].dva_word[1],
+	// 	bp->blk_dva[1].dva_word[0],
+	// 	bp->blk_dva[1].dva_word[1],
+	// 	bp->blk_dva[2].dva_word[0],
+	// 	bp->blk_dva[2].dva_word[1]
+	// );
 	(void) arc_read(dpa->dpa_zio, dpa->dpa_spa, bp,
 	    dbuf_issue_final_prefetch_done, dpa,
 	    dpa->dpa_prio, zio_flags, &aflags, &dpa->dpa_zb);
@@ -3491,7 +3491,7 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
     zio_priority_t prio, arc_flags_t aflags, dbuf_prefetch_fn cb,
     void *arg)
 {
-	zfs_dbgmsg("prefetching %llu:%llu:%llu", dn->dn_object, level, blkid);
+	// zfs_dbgmsg("prefetching %llu:%llu:%llu", dn->dn_object, level, blkid);
 	blkptr_t bp;
 	int epbs, nlevels, curlevel;
 	uint64_t curblkid;
@@ -3535,7 +3535,7 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 	 */
 	curlevel = level;
 	curblkid = blkid;
-	zfs_dbgmsg("curlevel: %d curblkid: %d for %llu:%llu:%llu", curlevel, curblkid, dn->dn_object, level, blkid);
+	// zfs_dbgmsg("curlevel: %d curblkid: %d for %llu:%llu:%llu", curlevel, curblkid, dn->dn_object, level, blkid);
 	while (curlevel < nlevels - 1) {
 		int parent_level = curlevel + 1;
 		uint64_t parent_blkid = curblkid >> epbs;
@@ -3553,7 +3553,7 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 		curblkid = parent_blkid;
 	}
 
-	zfs_dbgmsg("curlevel: %d curblkid: %d for %llu:%llu:%llu", curlevel, curblkid, dn->dn_object, level, blkid);
+	// zfs_dbgmsg("curlevel: %d curblkid: %d for %llu:%llu:%llu", curlevel, curblkid, dn->dn_object, level, blkid);
 
 	if (curlevel == nlevels - 1) {
 		/* No cached indirect blocks found. */
@@ -3610,14 +3610,14 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 
 		SET_BOOKMARK(&zb, ds != NULL ? ds->ds_object : DMU_META_OBJSET,
 		    dn->dn_object, curlevel, curblkid);
-		zfs_dbgmsg("issuing arc read for %llu %llu %llu %llu %llu %llu", 
-			bp.blk_dva[0].dva_word[0],
-			bp.blk_dva[0].dva_word[1],
-			bp.blk_dva[1].dva_word[0],
-			bp.blk_dva[1].dva_word[1],
-			bp.blk_dva[2].dva_word[0],
-			bp.blk_dva[2].dva_word[1]
-		);
+		// zfs_dbgmsg("issuing arc read for %llu %llu %llu %llu %llu %llu", 
+		// 	bp.blk_dva[0].dva_word[0],
+		// 	bp.blk_dva[0].dva_word[1],
+		// 	bp.blk_dva[1].dva_word[0],
+		// 	bp.blk_dva[1].dva_word[1],
+		// 	bp.blk_dva[2].dva_word[0],
+		// 	bp.blk_dva[2].dva_word[1]
+		// );
 		(void) arc_read(dpa->dpa_zio, dpa->dpa_spa,
 		    &bp, dbuf_prefetch_indirect_done, dpa,
 		    ZIO_PRIORITY_SYNC_READ,

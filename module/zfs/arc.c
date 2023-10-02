@@ -5712,14 +5712,14 @@ arc_read(zio_t *pio, spa_t *spa, const blkptr_t *bp,
 	int rc = 0;
 
 	// Log physical block address
-	zfs_dbgmsg("%llu %llu %llu %llu %llu %llu", 
-		bp->blk_dva[0].dva_word[0],
-		bp->blk_dva[0].dva_word[1],
-		bp->blk_dva[1].dva_word[0],
-		bp->blk_dva[1].dva_word[1],
-		bp->blk_dva[2].dva_word[0],
-		bp->blk_dva[2].dva_word[1]
-	);
+	// zfs_dbgmsg("%llu %llu %llu %llu %llu %llu", 
+	// 	bp->blk_dva[0].dva_word[0],
+	// 	bp->blk_dva[0].dva_word[1],
+	// 	bp->blk_dva[1].dva_word[0],
+	// 	bp->blk_dva[1].dva_word[1],
+	// 	bp->blk_dva[2].dva_word[0],
+	// 	bp->blk_dva[2].dva_word[1]
+	// );
 
 	ASSERT(!embedded_bp ||
 	    BPE_GET_ETYPE(bp) == BP_EMBEDDED_TYPE_DATA);
