@@ -3535,6 +3535,7 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 	 */
 	curlevel = level;
 	curblkid = blkid;
+	zfs_dbgmsg("curlevel: %d curblkid: %d for %llu:%llu:%llu", curlevel, curblkid, dn->dn_object, level, blkid);
 	while (curlevel < nlevels - 1) {
 		int parent_level = curlevel + 1;
 		uint64_t parent_blkid = curblkid >> epbs;
@@ -3551,6 +3552,8 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 		curlevel = parent_level;
 		curblkid = parent_blkid;
 	}
+
+	zfs_dbgmsg("curlevel: %d curblkid: %d for %llu:%llu:%llu", curlevel, curblkid, dn->dn_object, level, blkid);
 
 	if (curlevel == nlevels - 1) {
 		/* No cached indirect blocks found. */
@@ -3628,6 +3631,7 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 	zio_nowait(pio);
 	return (1);
 no_issue:
+	zfs_dbgmsg("no issue for %llu:%llu:%llu", dn->dn_object, level, blkid);
 	if (cb != NULL)
 		cb(arg, level, blkid, B_FALSE);
 	return (0);
