@@ -1018,29 +1018,15 @@ buf_hash_find(uint64_t spa, const blkptr_t *bp, kmutex_t **lockp)
 	kmutex_t *hash_lock = BUF_HASH_LOCK(idx);
 	arc_buf_hdr_t *hdr;
 
-	zfs_dbgmsg("ID hash lock: %llu", idx);
-
 	mutex_enter(hash_lock);
 	for (hdr = buf_hash_table.ht_table[idx]; hdr != NULL;
 	    hdr = hdr->b_hash_next) {
-		zfs_dbgmsg("ID hash hit: %llu equal check spa: %llu=%llu, birth: %llu=%llu, dva: %llu=%llu & %llu=%llu", 
-			idx, 
-			spa, 
-			hdr->b_spa, 
-			birth, 
-			hdr->b_birth,
-			(hdr)->b_dva.dva_word[0],
-			(dva)->dva_word[0],
-			(hdr)->b_dva.dva_word[1],
-			(dva)->dva_word[1]
-		);
 		if (HDR_EQUAL(spa, dva, birth, hdr)) {
 			*lockp = hash_lock;
 			return (hdr);
 		}
 	}
 	mutex_exit(hash_lock);
-	zfs_dbgmsg("ID hash miss: %llu", idx);
 	*lockp = NULL;
 	return (NULL);
 }
@@ -4051,6 +4037,30 @@ arc_evict_hdr(arc_buf_hdr_t *hdr, uint64_t *real_evicted)
 	return (bytes_evicted);
 }
 
+arc_buf_hdr_t *
+buf_hash_find_2(uint64_t spa, const blkptr_t *bp, kmutex_t **lockp)
+{
+	const dva_t *dva = BP_IDENTITY(bp);
+	uint64_t birth = BP_PHYSICAL_BIRTH(bp);
+	uint64_t idx = BUF_HASH_INDEX(spa, dva, birth);
+	kmutex_t *hash_lock = BUF_HASH_LOCK(idx);
+	arc_buf_hdr_t *hdr;
+
+	mutex_enter(hash_lock);
+	for (hdr = buf_hash_table.ht_table[idx]; hdr != NULL;
+	    hdr = hdr->b_hash_next) {
+		if (HDR_EQUAL(spa, dva, birth, hdr)) {
+			*lockp = hash_lock;
+			zfs_dbgmsg("ID hash hit: %llu", idx);
+			return (hdr);
+		}
+	}
+	mutex_exit(hash_lock);
+	zfs_dbgmsg("ID hash miss: %llu", idx);
+	*lockp = NULL;
+	return (NULL);
+}
+
 void
 arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 	arc_buf_hdr_t *hdr = NULL;
@@ -4069,7 +4079,7 @@ arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 	);
 
 	if (!embedded_bp) {
-		hdr = buf_hash_find(guid, bp, &hash_lock);
+		hdr = buf_hash_find_2(guid, bp, &hash_lock);
 	}
 
 	if (hdr != NULL) {
