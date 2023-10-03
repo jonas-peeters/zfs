@@ -3675,6 +3675,22 @@ dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
 	if (level == 0 && dnode_block_freed(dn, blkid))
 		return (1);
 
+	dmu_buf_impl_t *db = dbuf_find(dn->dn_objset, dn->dn_object,
+	    level, blkid, NULL);
+	
+	if (db != NULL) {
+		if (db->db_blkptr != NULL) {
+			zfs_dbgmsg("Evicting cached dbuf");
+			arc_evict_blk(dn->dn_objset->os_spa, &bp);
+			return (0);
+		} else if (db->db_buf != NULL) {
+			zfs_dbgmsg("Evicting cached dbuf through arc_buf_destroy");
+			arc_buf_destroy(db->db_buf, FTAG);
+			db->db_buf = NULL;
+			return (0);
+		}
+	}
+
 	/*
 	 * This dnode hasn't been written to disk yet, so we don't want to evict it.
 	 */
