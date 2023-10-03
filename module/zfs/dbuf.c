@@ -3707,6 +3707,8 @@ dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
 		bp = dn->dn_phys->dn_blkptr[curblkid];
 	}
 
+	zfs_dbgmsg("Evicting blkid %llu at level %llu, epbs: %llu", curblkid, curlevel, epbs);
+
 	arc_evict_blk(dn->dn_objset->os_spa, &bp);
 	return (0);
 }
