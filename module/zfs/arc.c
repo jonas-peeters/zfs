@@ -5784,9 +5784,11 @@ top:
 	}
 
 	if (hdr != NULL) {
-		zfs_dbgmsg("arc_read: found in cache");
+		zfs_dbgmsg("arc_read: found in cache psize: %llu lsize: %llu",
+			BP_GET_PSIZE(bp), BP_GET_LSIZE(bp));
 	} else {
-		zfs_dbgmsg("arc_read: not found in cache");
+		zfs_dbgmsg("arc_read: not found in cache psize: %llu lsize: %llu",
+			BP_GET_PSIZE(bp), BP_GET_LSIZE(bp));
 	}
 
 	/*
