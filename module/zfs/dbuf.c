@@ -3544,10 +3544,12 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 		if (dbuf_hold_impl(dn, parent_level, parent_blkid,
 		    FALSE, TRUE, FTAG, &db) == 0) {
 			blkptr_t *bpp = db->db_buf->b_data;
+			zfs_dbgmsg("Found dbuf for parent_level %llu and parent_blkid %llu; taking %llu blkptr", parent_level, parent_blkid, P2PHASE(curblkid, 1 << epbs));
 			bp = bpp[P2PHASE(curblkid, 1 << epbs)];
 			dbuf_rele(db, FTAG);
 			break;
 		}
+		zfs_dbgmsg("No dbuf found for parent_level %llu and parent_blkid %llu", parent_level, parent_blkid);
 
 		curlevel = parent_level;
 		curblkid = parent_blkid;
