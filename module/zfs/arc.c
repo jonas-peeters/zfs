@@ -4056,6 +4056,9 @@ arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 
 	if (!embedded_bp) {
 		hdr = buf_hash_find(guid, bp, &hash_lock);
+	} else {
+		hdr = buf_hash_find(guid, bp, &hash_lock);
+		zfs_dbgmsg("arc_evict_blk: bp is embedded");
 	}
 
 	if (hdr != NULL) {
