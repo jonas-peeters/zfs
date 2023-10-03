@@ -3631,7 +3631,7 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 	zio_nowait(pio);
 	return (1);
 no_issue:
-	zfs_dbgmsg("no issue for %llu:%llu:%llu", dn->dn_object, level, blkid);
+	// zfs_dbgmsg("no issue for %llu:%llu:%llu", dn->dn_object, level, blkid);
 	if (cb != NULL)
 		cb(arg, level, blkid, B_FALSE);
 	return (0);

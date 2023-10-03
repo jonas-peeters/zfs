@@ -1018,6 +1018,8 @@ buf_hash_find(uint64_t spa, const blkptr_t *bp, kmutex_t **lockp)
 	kmutex_t *hash_lock = BUF_HASH_LOCK(idx);
 	arc_buf_hdr_t *hdr;
 
+	zfs_dbgmsg("ID hash lock: %llu", idx);
+
 	mutex_enter(hash_lock);
 	for (hdr = buf_hash_table.ht_table[idx]; hdr != NULL;
 	    hdr = hdr->b_hash_next) {
@@ -1027,6 +1029,7 @@ buf_hash_find(uint64_t spa, const blkptr_t *bp, kmutex_t **lockp)
 		}
 	}
 	mutex_exit(hash_lock);
+	zfs_dbgmsg("ID hash miss: %llu", idx);
 	*lockp = NULL;
 	return (NULL);
 }
@@ -4056,9 +4059,6 @@ arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 
 	if (!embedded_bp) {
 		hdr = buf_hash_find(guid, bp, &hash_lock);
-	} else {
-		hdr = buf_hash_find(guid, bp, &hash_lock);
-		zfs_dbgmsg("arc_evict_blk: bp is embedded");
 	}
 
 	if (hdr != NULL) {
