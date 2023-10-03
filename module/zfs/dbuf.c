@@ -3491,7 +3491,7 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
     zio_priority_t prio, arc_flags_t aflags, dbuf_prefetch_fn cb,
     void *arg)
 {
-	// zfs_dbgmsg("prefetching %llu:%llu:%llu", dn->dn_object, level, blkid);
+	zfs_dbgmsg("prefetching %llu:%llu:%llu", dn->dn_object, level, blkid);
 	blkptr_t bp;
 	int epbs, nlevels, curlevel;
 	uint64_t curblkid;
@@ -3561,7 +3561,14 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 		/* No cached indirect blocks found. */
 		ASSERT3U(curblkid, <, dn->dn_phys->dn_nblkptr);
 		bp = dn->dn_phys->dn_blkptr[curblkid];
+		zfs_dbgmsg("No cached indirect blocks found curblkid: %llu", curblkid);
 	}
+	zfs_dbgmsg("%llu %llu %llu %llu", 
+		bp.blk_dva[0].dva_word[0],
+		bp.blk_dva[0].dva_word[1],
+		bp.blk_dva[1].dva_word[0],
+		bp.blk_dva[1].dva_word[1]
+	);
 	ASSERT(!BP_IS_REDACTED(&bp) ||
 	    dsl_dataset_feature_is_active(dn->dn_objset->os_dsl_dataset,
 	    SPA_FEATURE_REDACTED_DATASETS));
@@ -3709,6 +3716,7 @@ dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
 		/* No cached indirect blocks found. */
 		ASSERT3U(curblkid, <, dn->dn_phys->dn_nblkptr);
 		bp = dn->dn_phys->dn_blkptr[curblkid];
+		zfs_dbgmsg("No cached indirect blocks found curblkid: %llu", curblkid);
 	}
 
 	zfs_dbgmsg("Evicting blkid %llu at level %llu, epbs: %llu", curblkid, curlevel, epbs);
