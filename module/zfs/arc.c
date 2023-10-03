@@ -1046,6 +1046,8 @@ buf_hash_insert(arc_buf_hdr_t *hdr, kmutex_t **lockp)
 	arc_buf_hdr_t *fhdr;
 	uint32_t i;
 
+	zfs_dbgmsg("ID hash insert: %llu", idx);
+
 	ASSERT(!DVA_IS_EMPTY(&hdr->b_dva));
 	ASSERT(hdr->b_birth != 0);
 	ASSERT(!HDR_IN_HASH_TABLE(hdr));
@@ -4073,9 +4075,7 @@ arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 		bp->blk_dva[0].dva_word[0],
 		bp->blk_dva[0].dva_word[1],
 		bp->blk_dva[1].dva_word[0],
-		bp->blk_dva[1].dva_word[1],
-		bp->blk_dva[2].dva_word[0],
-		bp->blk_dva[2].dva_word[1]
+		bp->blk_dva[1].dva_word[1]
 	);
 
 	if (!embedded_bp) {
