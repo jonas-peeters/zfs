@@ -5783,6 +5783,12 @@ top:
 		hdr = buf_hash_find(guid, bp, &hash_lock);
 	}
 
+	if (hdr != NULL) {
+		zfs_dbgmsg("arc_read: found in cache");
+	} else {
+		zfs_dbgmsg("arc_read: not found in cache");
+	}
+
 	/*
 	 * Determine if we have an L1 cache hit or a cache miss. For simplicity
 	 * we maintain encrypted data separately from compressed / uncompressed
