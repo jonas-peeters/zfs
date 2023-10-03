@@ -1023,6 +1023,17 @@ buf_hash_find(uint64_t spa, const blkptr_t *bp, kmutex_t **lockp)
 	mutex_enter(hash_lock);
 	for (hdr = buf_hash_table.ht_table[idx]; hdr != NULL;
 	    hdr = hdr->b_hash_next) {
+		zfs_dbgmsg("ID hash hit: %llu equal check spa: %llu=%llu, birth: %llu=%llu, dva: %llu=%llu & %llu=%llu", 
+			idx, 
+			spa, 
+			hdr->b_spa, 
+			birth, 
+			hdr->b_birth,
+			(hdr)->b_dva.dva_word[0],
+			(dva)->dva_word[0],
+			(hdr)->b_dva.dva_word[1],
+			(dva)->dva_word[1]
+		);
 		if (HDR_EQUAL(spa, dva, birth, hdr)) {
 			*lockp = hash_lock;
 			return (hdr);
