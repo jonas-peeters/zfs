@@ -3675,10 +3675,18 @@ dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
 	if (level == 0 && dnode_block_freed(dn, blkid))
 		return (1);
 
-	dmu_buf_impl_t *db = dbuf_find(dn->dn_objset, dn->dn_object,
-	    level, blkid, NULL);
+	nlevels = dn->dn_phys->dn_nlevels;
+
+	dmu_buf_impl_t *db = NULL;
+	curlevel = level;
+	while (db == NULL && curlevel < nlevels - 1) {
+		zfs_dbgmsg("Looking for dbuf for level %llu and blkid %llu", curlevel, blkid);
+		db = dbuf_find(dn->dn_objset, dn->dn_object, curlevel, blkid, NULL);
+		curlevel++;
+	}
 	
 	if (db != NULL) {
+		zfs_dbgmsg("Found dmu buf");
 		if (db->db_blkptr != NULL) {
 			zfs_dbgmsg("Evicting cached dbuf");
 			arc_evict_blk(dn->dn_objset->os_spa, &bp);
@@ -3689,12 +3697,14 @@ dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
 			db->db_buf = NULL;
 			return (0);
 		}
+	} else {
+		zfs_dbgmsg("Did not find dmu buf");
 	}
 
 	/*
 	 * This dnode hasn't been written to disk yet, so we don't want to evict it.
 	 */
-	nlevels = dn->dn_phys->dn_nlevels;
+	
 	if (level >= nlevels || dn->dn_phys->dn_nblkptr == 0)
 		return (1);
 
