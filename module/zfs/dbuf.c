@@ -3679,14 +3679,10 @@ dbuf_arc_evict(dnode_t *dn, int64_t level, uint64_t blkid)
 	
 	if (db != NULL) {
 		zfs_dbgmsg("Got dmu buf");
-		if (db->db_blkptr != NULL) {
+		if (db->db_blkptr != NULL && db->db_buf != NULL) {
 			zfs_dbgmsg("Evicting cached dbuf");
 			arc_evict_blk(dn->dn_objset->os_spa, db->db_blkptr);
-			return (0);
-		} else if (db->db_buf != NULL) {
-			zfs_dbgmsg("Evicting cached dbuf through arc_buf_destroy");
 			arc_buf_destroy(db->db_buf, FTAG);
-			db->db_buf = NULL;
 			return (0);
 		}
 	} else {
