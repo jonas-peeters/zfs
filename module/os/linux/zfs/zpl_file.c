@@ -1014,8 +1014,11 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		arc_free_space = arc_free_memory();
 		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 
+		zio_priority_t priority = advice == POSIX_FADV_WILLNEED ? 
+			ZIO_PRIORITY_ASYNC_READ : ZIO_PRIORITY_SPECULATIVE_PREFETCH;
+
 		dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
-		    ZIO_PRIORITY_ASYNC_READ, 0, prefetch_max);
+		    priority, 0, prefetch_max);
 		break;
 	/*
 	 * For random access patterns, we want to load prefetch the data
@@ -1035,7 +1038,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		if (arc_free_space > len) {
 			// Prefetch the data
 			dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
-				ZIO_PRIORITY_ASYNC_READ, 0, 
+				ZIO_PRIORITY_SPECULATIVE_PREFETCH, 0, 
 				prefetch_max);
 			break;
 		}
@@ -1070,7 +1073,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 		
 		dmu_prefetch_impl(os, zp->z_id, 0, offset, len, 
-			ZIO_PRIORITY_ASYNC_READ, 
+			ZIO_PRIORITY_SPECULATIVE_PREFETCH, 
 			ARC_FLAG_UNCACHED, prefetch_max);
 
 		break;

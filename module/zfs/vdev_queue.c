@@ -149,6 +149,8 @@ static uint_t zfs_vdev_async_read_min_active = 1;
 /*  */ uint_t zfs_vdev_async_read_max_active = 3;
 static uint_t zfs_vdev_async_write_min_active = 2;
 /*  */ uint_t zfs_vdev_async_write_max_active = 10;
+static uint_t zfs_vdev_speculative_prefetch_min_active = 0;
+static uint_t zfs_vdev_speculative_prefetch_max_active = 3;
 static uint_t zfs_vdev_scrub_min_active = 1;
 static uint_t zfs_vdev_scrub_max_active = 3;
 static uint_t zfs_vdev_removal_min_active = 1;
@@ -308,6 +310,8 @@ vdev_queue_class_min_active(vdev_queue_t *vq, zio_priority_t p)
 		return (zfs_vdev_async_read_min_active);
 	case ZIO_PRIORITY_ASYNC_WRITE:
 		return (zfs_vdev_async_write_min_active);
+	case ZIO_PRIORITY_SPECULATIVE_PREFETCH:
+		return (zfs_vdev_speculative_prefetch_min_active);
 	case ZIO_PRIORITY_SCRUB:
 		return (vq->vq_ia_active == 0 ? zfs_vdev_scrub_min_active :
 		    MIN(vq->vq_nia_credit, zfs_vdev_scrub_min_active));
@@ -384,6 +388,8 @@ vdev_queue_class_max_active(vdev_queue_t *vq, zio_priority_t p)
 		return (zfs_vdev_sync_write_max_active);
 	case ZIO_PRIORITY_ASYNC_READ:
 		return (zfs_vdev_async_read_max_active);
+	case ZIO_PRIORITY_SPECULATIVE_PREFETCH:
+		return (zfs_vdev_speculative_prefetch_max_active);
 	case ZIO_PRIORITY_ASYNC_WRITE:
 		return (vdev_queue_max_async_writes(vq->vq_vdev->vdev_spa));
 	case ZIO_PRIORITY_SCRUB:

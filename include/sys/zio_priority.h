@@ -27,6 +27,7 @@ typedef enum zio_priority {
 	ZIO_PRIORITY_SYNC_WRITE,	/* ZIL */
 	ZIO_PRIORITY_ASYNC_READ,	/* prefetch */
 	ZIO_PRIORITY_ASYNC_WRITE,	/* spa_sync() */
+	ZIO_PRIORITY_SPECULATIVE_PREFETCH, /* speculative prefetch */
 	ZIO_PRIORITY_SCRUB,		/* asynchronous scrub/resilver reads */
 	ZIO_PRIORITY_REMOVAL,		/* reads/writes for vdev removal */
 	ZIO_PRIORITY_INITIALIZING,	/* initializing I/O */
