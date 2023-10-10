@@ -6082,7 +6082,8 @@ top:
 		 * the read IO is still in-flight.
 		 */
 		if (priority == ZIO_PRIORITY_ASYNC_READ ||
-		    priority == ZIO_PRIORITY_SCRUB)
+		    priority == ZIO_PRIORITY_SCRUB ||
+			priority == ZIO_PRIORITY_SPECULATIVE_PREFETCH)
 			arc_hdr_set_flags(hdr, ARC_FLAG_PRIO_ASYNC_READ);
 		else
 			arc_hdr_clear_flags(hdr, ARC_FLAG_PRIO_ASYNC_READ);

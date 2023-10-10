@@ -1015,7 +1015,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 
 		zio_priority_t priority = advice == POSIX_FADV_WILLNEED ? 
-			ZIO_PRIORITY_ASYNC_READ : ZIO_PRIORITY_SPECULATIVE_PREFETCH;
+			ZIO_PRIORITY_ASYNC_READ : ZIO_PRIORITY_ASYNC_READ;
 
 		dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
 		    priority, 0, prefetch_max);
@@ -1038,7 +1038,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		if (arc_free_space > len) {
 			// Prefetch the data
 			dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
-				ZIO_PRIORITY_SPECULATIVE_PREFETCH, 0, 
+				ZIO_PRIORITY_ASYNC_READ, 0, 
 				prefetch_max);
 			break;
 		}
@@ -1073,7 +1073,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 		
 		dmu_prefetch_impl(os, zp->z_id, 0, offset, len, 
-			ZIO_PRIORITY_SPECULATIVE_PREFETCH, 
+			ZIO_PRIORITY_ASYNC_READ, 
 			ARC_FLAG_UNCACHED, prefetch_max);
 
 		break;
