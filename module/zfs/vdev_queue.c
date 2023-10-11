@@ -863,8 +863,11 @@ again:
 				return (NULL);
 			}
 		}
-		zfs_dbgmsg("Now: %llu, Last: %llu, Diff: %llu", gethrtime(), vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts);
-		if (gethrtime() - vq->vq_io_complete_ts < 1000000000 &&
+
+		longlong_t min_time = (longlong_t)1000000000;
+		zfs_dbgmsg("Now: %llu, Last: %llu, Diff: %llu, Result: %d", gethrtime(), vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts < min_time);
+		zfs_dbgmsg("Last prio: %llu", vq->vq_last_prio);
+		if (gethrtime() - vq->vq_io_complete_ts < min_time &&
 			vq->vq_last_prio != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 			/* Don't issue speculative prefetches if any other IO was active in 
 			 * the last 1 seconds, unless we are only doing speculative 
