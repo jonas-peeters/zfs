@@ -863,6 +863,7 @@ again:
 				return (NULL);
 			}
 		}
+		zfs_dbgmsg("Now: %llu, Last: %llu, Diff: %llu", gethrtime(), vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts);
 		if (gethrtime() - vq->vq_io_complete_ts < 1000000000 &&
 			vq->vq_last_prio != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 			/* Don't issue speculative prefetches if any other IO was active in 
