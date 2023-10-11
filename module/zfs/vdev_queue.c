@@ -862,10 +862,10 @@ again:
 				return (NULL);
 			}
 		}
-		if (gethrtime() - vq->vq_io_complete_ts < 10000000 &&
+		if (gethrtime() - vq->vq_io_complete_ts < 1000000000 &&
 			vq->vq_last_prio != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 			/* Don't issue speculative prefetches if any other IO was active in 
-			 * the last 0.01 seconds, unless we are only doing speculative 
+			 * the last 1 seconds, unless we are only doing speculative 
 			 * prefetches right now */
 			return (NULL);
 		}
