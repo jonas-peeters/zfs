@@ -859,6 +859,7 @@ again:
 			if (vq->vq_cactive[i] > 0) {
 				/* Don't issue speculative prefetches if there are any other 
 				 * active IOs */
+				zfs_dbgmsg("No prefetch because there are active IOs");
 				return (NULL);
 			}
 		}
@@ -867,6 +868,7 @@ again:
 			/* Don't issue speculative prefetches if any other IO was active in 
 			 * the last 1 seconds, unless we are only doing speculative 
 			 * prefetches right now */
+			zfs_dbgmsg("No prefetch because there was an active IO in the last 1 seconds");
 			return (NULL);
 		}
 	}
