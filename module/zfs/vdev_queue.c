@@ -27,7 +27,6 @@
  * Copyright (c) 2012, 2018 by Delphix. All rights reserved.
  */
 
-#include <sys/timer.h>
 #include <sys/zfs_context.h>
 #include <sys/vdev_impl.h>
 #include <sys/spa_impl.h>
@@ -37,6 +36,7 @@
 #include <sys/metaslab_impl.h>
 #include <sys/spa.h>
 #include <sys/abd.h>
+#include <sys/time.h>
 
 /*
  * ZFS I/O Scheduler
