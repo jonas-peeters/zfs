@@ -438,6 +438,11 @@ vdev_queue_class_to_issue(vdev_queue_t *vq)
 	uint32_t cq = vq->vq_cqueued;
 	zio_priority_t p, p1;
 
+	int nothing_found_counter = 0;
+
+again:
+	nothing_found_counter++;
+
 	if (cq == 0 || vq->vq_active >= zfs_vdev_max_active)
 		return (ZIO_PRIORITY_NUM_QUEUEABLE);
 
@@ -487,12 +492,13 @@ found:
 		zfs_dbgmsg("Now: %llu, Last: %llu, Diff: %llu, Result: %d", gethrtime(), vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts < min_time);
 		zfs_dbgmsg("Last prio: %d", vq->vq_last_prio);
 		if (gethrtime() - vq->vq_io_complete_ts < min_time &&
-			vq->vq_last_prio != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
+			vq->vq_last_prio != ZIO_PRIORITY_SPECULATIVE_PREFETCH &&
+			nothing_found_counter < 20) {
 			/* Don't issue speculative prefetches if any other IO was active in 
 			 * the last 1 seconds, unless we are only doing speculative 
 			 * prefetches right now */
 			zfs_dbgmsg("No prefetch because there was an active IO in the last 1 seconds");
-			return (ZIO_PRIORITY_NUM_QUEUEABLE);
+			goto again;
 		}
 	}
 
