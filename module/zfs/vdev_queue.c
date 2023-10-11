@@ -864,11 +864,6 @@ again:
 		}
 	}
 
-	// Log queue states
-	for (int i = 0; i < ZIO_PRIORITY_NUM_QUEUEABLE; i++) {
-		zfs_dbgmsg("Active IOs in queue %d: %d", i, vq->vq_cactive[i]);
-	}
-
 	switch (p) {
 		case ZIO_PRIORITY_SYNC_READ:
 			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SYNC_READ");
