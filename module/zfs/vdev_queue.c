@@ -478,7 +478,7 @@ found:
 				/* Don't issue speculative prefetches if there are any other 
 				 * active IOs */
 				zfs_dbgmsg("No prefetch because there are active IOs");
-				return (NULL);
+				return (ZIO_PRIORITY_NUM_QUEUEABLE);
 			}
 		}
 
@@ -491,7 +491,7 @@ found:
 			 * the last 1 seconds, unless we are only doing speculative 
 			 * prefetches right now */
 			zfs_dbgmsg("No prefetch because there was an active IO in the last 1 seconds");
-			return (NULL);
+			return (ZIO_PRIORITY_NUM_QUEUEABLE);
 		}
 	}
 
