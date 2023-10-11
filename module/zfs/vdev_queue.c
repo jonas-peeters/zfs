@@ -36,7 +36,6 @@
 #include <sys/metaslab_impl.h>
 #include <sys/spa.h>
 #include <sys/abd.h>
-#include <sys/time.h>
 
 /*
  * ZFS I/O Scheduler
@@ -487,7 +486,7 @@ found:
 				// Get duration of last IO in nanoseconds
 				hrtime_t last_duration = vq->vq_io_delta_ts;
 				// Sleep between 1/10th to 1/5th of the duration of the last IO
-				usleep_range(last_duration / NSEC_PER_USEC / 10, last_duration / NSEC_PER_USEC / 5);
+				zfs_sleep_until(gethrtime() + (last_duration + NSEC_PER_USEC / 10));
 				goto again;
 			}
 		}
@@ -506,7 +505,7 @@ found:
 			// Get duration of last IO in nanoseconds
 			hrtime_t last_duration = vq->vq_io_delta_ts;
 			// Sleep between 1/10th to 1/5th of the duration of the last IO
-			usleep_range(last_duration / NSEC_PER_USEC / 10, last_duration / NSEC_PER_USEC / 5);
+			zfs_sleep_until(gethrtime() + (last_duration + NSEC_PER_USEC / 10));
 			goto again;
 		}
 	}
