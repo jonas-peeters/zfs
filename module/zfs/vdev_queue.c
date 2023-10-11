@@ -871,7 +871,7 @@ again:
 		}
 	}
 
-	/*switch (p) {
+	switch (p) {
 		case ZIO_PRIORITY_SYNC_READ:
 			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SYNC_READ");
 			break;
@@ -904,7 +904,7 @@ again:
 			break;
 		default:
 			break;
-	}*/
+	}
 	
 
 	if (vdev_queue_class_fifo(p)) {
