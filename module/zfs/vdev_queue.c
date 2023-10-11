@@ -486,7 +486,7 @@ found:
 				// Get duration of last IO in nanoseconds
 				hrtime_t last_duration = vq->vq_io_delta_ts;
 				// Sleep between 1/10th to 1/5th of the duration of the last IO
-				zfs_sleep_until(gethrtime() + (last_duration + NSEC_PER_USEC / 10));
+				zfs_sleep_until(gethrtime() + (last_duration / NSEC_PER_USEC / 10));
 				goto again;
 			}
 		}
@@ -505,7 +505,7 @@ found:
 			// Get duration of last IO in nanoseconds
 			hrtime_t last_duration = vq->vq_io_delta_ts;
 			// Sleep between 1/10th to 1/5th of the duration of the last IO
-			zfs_sleep_until(gethrtime() + (last_duration + NSEC_PER_USEC / 10));
+			zfs_sleep_until(gethrtime() + (last_duration / NSEC_PER_USEC / 10));
 			goto again;
 		}
 	}
