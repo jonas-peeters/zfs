@@ -933,12 +933,10 @@ disable_compression_for_dnode(dnode_t *dn)
 	dmu_tx_hold_write(tx, dn->dn_object, 0, 0);
 	int err = dmu_tx_assign(tx, TXG_NOWAIT);
 	if (err != 0) {
-		zfs_dbgmsg("Error %d on dmu_tx_assign", err);
 		dmu_tx_abort(tx);
 		return (err);
 	}
 
-	zfs_dbgmsg("Disabling compression for dnode");
 	dmu_object_set_compress(dn->dn_objset, dn->dn_object, ZIO_COMPRESS_OFF, tx);
 
 	dmu_tx_commit(tx);
@@ -953,12 +951,10 @@ enable_compression_for_dnode(dnode_t *dn)
 	dmu_tx_hold_write(tx, dn->dn_object, 0, 0);
 	int err = dmu_tx_assign(tx, TXG_NOWAIT);
 	if (err != 0) {
-		zfs_dbgmsg("Error %d on dmu_tx_assign", err);
 		dmu_tx_abort(tx);
 		return (err);
 	}
 
-	zfs_dbgmsg("Disabling compression for dnode");
 	dmu_object_set_compress(dn->dn_objset, dn->dn_object, ZIO_COMPRESS_ON, tx);
 
 	dmu_tx_commit(tx);
@@ -1015,7 +1011,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 
 		zio_priority_t priority = advice == POSIX_FADV_WILLNEED ? 
-			ZIO_PRIORITY_ASYNC_READ : ZIO_PRIORITY_ASYNC_READ;
+			ZIO_PRIORITY_ASYNC_READ : ZIO_PRIORITY_SPECULATIVE_PREFETCH;
 
 		dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
 		    priority, 0, prefetch_max);
@@ -1038,7 +1034,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		if (arc_free_space > len) {
 			// Prefetch the data
 			dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
-				ZIO_PRIORITY_ASYNC_READ, 0, 
+				ZIO_PRIORITY_SPECULATIVE_PREFETCH, 0, 
 				prefetch_max);
 			break;
 		}
@@ -1073,7 +1069,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 		
 		dmu_prefetch_impl(os, zp->z_id, 0, offset, len, 
-			ZIO_PRIORITY_ASYNC_READ, 
+			ZIO_PRIORITY_SPECULATIVE_PREFETCH, 
 			ARC_FLAG_UNCACHED, prefetch_max);
 
 		break;
@@ -1091,7 +1087,6 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 
 		DB_DNODE_ENTER(db);
 		dn = DB_DNODE(db);
-		zfs_dbgmsg("Disabeling compression on dnode");
 		error = disable_compression_for_dnode(dn);
 		DB_DNODE_EXIT(db);
 		break;
@@ -1101,7 +1096,6 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 
 		DB_DNODE_ENTER(db);
 		dn = DB_DNODE(db);
-		zfs_dbgmsg("Enable compression on dnode");
 		error = enable_compression_for_dnode(dn);
 		DB_DNODE_EXIT(db);
 		break;

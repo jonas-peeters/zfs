@@ -1046,8 +1046,6 @@ buf_hash_insert(arc_buf_hdr_t *hdr, kmutex_t **lockp)
 	arc_buf_hdr_t *fhdr;
 	uint32_t i;
 
-	zfs_dbgmsg("ID hash insert: %llu", idx);
-
 	ASSERT(!DVA_IS_EMPTY(&hdr->b_dva));
 	ASSERT(hdr->b_birth != 0);
 	ASSERT(!HDR_IN_HASH_TABLE(hdr));
@@ -4039,30 +4037,6 @@ arc_evict_hdr(arc_buf_hdr_t *hdr, uint64_t *real_evicted)
 	return (bytes_evicted);
 }
 
-arc_buf_hdr_t *
-buf_hash_find_2(uint64_t spa, const blkptr_t *bp, kmutex_t **lockp)
-{
-	const dva_t *dva = BP_IDENTITY(bp);
-	uint64_t birth = BP_PHYSICAL_BIRTH(bp);
-	uint64_t idx = BUF_HASH_INDEX(spa, dva, birth);
-	kmutex_t *hash_lock = BUF_HASH_LOCK(idx);
-	arc_buf_hdr_t *hdr;
-
-	mutex_enter(hash_lock);
-	for (hdr = buf_hash_table.ht_table[idx]; hdr != NULL;
-	    hdr = hdr->b_hash_next) {
-		if (HDR_EQUAL(spa, dva, birth, hdr)) {
-			*lockp = hash_lock;
-			zfs_dbgmsg("ID hash hit: %llu", idx);
-			return (hdr);
-		}
-	}
-	mutex_exit(hash_lock);
-	zfs_dbgmsg("ID hash miss: %llu", idx);
-	*lockp = NULL;
-	return (NULL);
-}
-
 void
 arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 	arc_buf_hdr_t *hdr = NULL;
@@ -4070,29 +4044,18 @@ arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 	uint64_t guid = spa_load_guid(spa);
 	boolean_t embedded_bp = !!BP_IS_EMBEDDED(bp);
 
-	// Log physical block address
-	zfs_dbgmsg("%llu %llu %llu %llu", 
-		bp->blk_dva[0].dva_word[0],
-		bp->blk_dva[0].dva_word[1],
-		bp->blk_dva[1].dva_word[0],
-		bp->blk_dva[1].dva_word[1]
-	);
-
 	if (!embedded_bp) {
-		hdr = buf_hash_find_2(guid, bp, &hash_lock);
+		hdr = buf_hash_find(guid, bp, &hash_lock);
 	}
 
 	if (hdr != NULL) {
 		if (HDR_HAS_L1HDR(hdr)) {
 			uint64_t bytes_evicted;
 			arc_evict_hdr(hdr, &bytes_evicted);
-			zfs_dbgmsg("evicted 1 %llu bytes", bytes_evicted);
 		} else {
-			zfs_dbgmsg("hdr %p has no L1", hdr);
 		}
 		mutex_exit(hash_lock);
 	} else {
-		zfs_dbgmsg("no hdr for bp %p", bp);
 	}
 }
 
@@ -5288,10 +5251,6 @@ arc_access(arc_buf_hdr_t *hdr, arc_flags_t arc_flags, boolean_t hit)
 			DTRACE_PROBE1(new_state__uncached, arc_buf_hdr_t *,
 			    hdr);
 		} else {
-			/*if (HDR_PRESCIENT_PREFETCH(hdr)) {
-				arc_hdr_clear_flags(hdr, ARC_FLAG_PRESCIENT_PREFETCH);
-				ARCSTAT_BUMP(arcstat_prescient_prefetch);
-			}*/
 			new_state = arc_mru;
 			DTRACE_PROBE1(new_state__mru, arc_buf_hdr_t *, hdr);
 		}
@@ -5734,16 +5693,6 @@ arc_read(zio_t *pio, spa_t *spa, const blkptr_t *bp,
 	boolean_t no_buf = *arc_flags & ARC_FLAG_NO_BUF;
 	arc_buf_t *buf = NULL;
 	int rc = 0;
-
-	// Log physical block address
-	// zfs_dbgmsg("%llu %llu %llu %llu %llu %llu", 
-	// 	bp->blk_dva[0].dva_word[0],
-	// 	bp->blk_dva[0].dva_word[1],
-	// 	bp->blk_dva[1].dva_word[0],
-	// 	bp->blk_dva[1].dva_word[1],
-	// 	bp->blk_dva[2].dva_word[0],
-	// 	bp->blk_dva[2].dva_word[1]
-	// );
 
 	ASSERT(!embedded_bp ||
 	    BPE_GET_ETYPE(bp) == BP_EMBEDDED_TYPE_DATA);
