@@ -27,6 +27,7 @@
  * Copyright (c) 2012, 2018 by Delphix. All rights reserved.
  */
 
+#include <linux/delay.h>
 #include <sys/zfs_context.h>
 #include <sys/vdev_impl.h>
 #include <sys/spa_impl.h>
