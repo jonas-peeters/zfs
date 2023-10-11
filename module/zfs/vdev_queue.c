@@ -980,7 +980,8 @@ vdev_queue_io(zio_t *zio)
 		    zio->io_priority != ZIO_PRIORITY_SCRUB &&
 		    zio->io_priority != ZIO_PRIORITY_REMOVAL &&
 		    zio->io_priority != ZIO_PRIORITY_INITIALIZING &&
-		    zio->io_priority != ZIO_PRIORITY_REBUILD) {
+		    zio->io_priority != ZIO_PRIORITY_REBUILD &&
+		    zio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 			zio->io_priority = ZIO_PRIORITY_ASYNC_READ;
 		}
 	} else if (zio->io_type == ZIO_TYPE_WRITE) {
