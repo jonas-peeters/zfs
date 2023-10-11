@@ -441,10 +441,6 @@ vdev_queue_class_to_issue(vdev_queue_t *vq)
 	if (cq == 0 || vq->vq_active >= zfs_vdev_max_active)
 		return (ZIO_PRIORITY_NUM_QUEUEABLE);
 
-	// Log queue states
-	for (int i = 0; i < ZIO_PRIORITY_NUM_QUEUEABLE; i++) {
-		zfs_dbgmsg("Active IOs in queue %d: %d", i, vq->vq_cactive[i]);
-	}
 
 	/*
 	 * Find a queue that has not reached its minimum # outstanding i/os.
@@ -856,6 +852,21 @@ again:
 	if (p == ZIO_PRIORITY_NUM_QUEUEABLE) {
 		/* No eligible queued i/os */
 		return (NULL);
+	}
+
+	if (p == ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
+		for (int i = 0; i < ZIO_PRIORITY_SPECULATIVE_PREFETCH; i++) {
+			if (vq->vq_cactive[i] > 0) {
+				/* Don't issue speculative prefetches if there are any other 
+				 * active IOs */
+				return (NULL);
+			}
+		}
+	}
+
+	// Log queue states
+	for (int i = 0; i < ZIO_PRIORITY_NUM_QUEUEABLE; i++) {
+		zfs_dbgmsg("Active IOs in queue %d: %d", i, vq->vq_cactive[i]);
 	}
 
 	switch (p) {
