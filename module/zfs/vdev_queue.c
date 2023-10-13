@@ -492,7 +492,7 @@ found:
 		}
 
 		// 1 seconds in nanoseconds
-		long min_time = NSEC_PER_SEC;
+		long min_time = 1000000000L;
 		zfs_dbgmsg("Now: %llu, Last: %llu, Diff: %llu, Result: %d", gethrtime(), vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts < min_time);
 		zfs_dbgmsg("Last prio: %d", vq->vq_last_prio);
 		if (gethrtime() - vq->vq_io_complete_ts < min_time &&
