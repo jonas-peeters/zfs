@@ -503,7 +503,7 @@ found:
 			zfs_dbgmsg("No prefetch because there was an active IO in the last 1 seconds");
 			// Sleep until the last IO is at least 1 seconds old
 			mutex_exit(&vq->vq_lock);
-			zfs_sleep_until(gethrtime() - vq->vq_io_complete_ts + min_time);
+			zfs_sleep_until(vq->vq_io_complete_ts + min_time);
 			mutex_enter(&vq->vq_lock);
 			goto start;
 		}
