@@ -478,6 +478,13 @@ again:
 
 found:
 	if (p == ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
+		zfs_dbgmsg("Active IOs: %d:%d:%d:%d:%d:%d:%d:%d", 
+			vq->vq_cactive[0], vq->vq_cactive[1], vq->vq_cactive[2], vq->vq_cactive[3], vq->vq_cactive[4], vq->vq_cactive[5], vq->vq_cactive[6], vq->vq_cactive[7]);
+		if (nothing_found_counter > 20) {
+			zfs_dbgmsg("No other IO found in 20 tries, issuing speculative prefetch");
+			goto finish;
+		}
+
 		for (int i = 0; i < ZIO_PRIORITY_SPECULATIVE_PREFETCH; i++) {
 			if (vq->vq_cactive[i] > 0) {
 				/* Don't issue speculative prefetches if there are any other 
@@ -485,7 +492,7 @@ found:
 				zfs_dbgmsg("No prefetch because there are active IOs");
 				// Get duration of last IO in nanoseconds
 				hrtime_t last_duration = vq->vq_io_delta_ts;
-				// Sleep between 1/10th to 1/5th of the duration of the last IO
+				// Sleep 1/10th of the duration of the last IO
 				zfs_sleep_until(gethrtime() + (last_duration / 10));
 				goto again;
 			}
@@ -504,12 +511,13 @@ found:
 			zfs_dbgmsg("No prefetch because there was an active IO in the last 1 seconds");
 			// Get duration of last IO in nanoseconds
 			hrtime_t last_duration = vq->vq_io_delta_ts;
-			// Sleep between 1/10th to 1/5th of the duration of the last IO
+			// Sleep 1/10th of the duration of the last IO
 			zfs_sleep_until(gethrtime() + (last_duration / 10));
 			goto again;
 		}
 	}
 
+finish:
 	vq->vq_last_prio = p;
 	return (p);
 }
