@@ -163,6 +163,13 @@ static uint_t zfs_vdev_rebuild_min_active = 1;
 static uint_t zfs_vdev_rebuild_max_active = 3;
 
 /*
+ * This is the time in nanoseconds before a speculative prefetch can be issued
+ * after the last I/O completed.  This is to prevent speculative prefetches
+ * from interfering with interactive I/Os.
+ */
+static long zfs_vdev_min_wait_before_speculative_prefetch = 1000000000L;
+
+/*
  * When the pool has less than zfs_vdev_async_write_active_min_dirty_percent
  * dirty data, use zfs_vdev_async_write_min_active.  When it has more than
  * zfs_vdev_async_write_active_max_dirty_percent, use
@@ -438,11 +445,6 @@ vdev_queue_class_to_issue(vdev_queue_t *vq)
 	uint32_t cq = vq->vq_cqueued;
 	zio_priority_t p, p1;
 
-	int nothing_else_found_counter = 0;
-
-start:
-	nothing_else_found_counter++;
-
 	if (cq == 0 || vq->vq_active >= zfs_vdev_max_active)
 		return (ZIO_PRIORITY_NUM_QUEUEABLE);
 
@@ -487,25 +489,17 @@ found:
 			}
 		}
 
-		if (nothing_else_found_counter >= 10) {
-			goto finish;
-		}
-
 		// 1 seconds in nanoseconds
-		long min_time = 1000000000L;
-		zfs_dbgmsg("Now: %llu, Last: %llu, Diff: %llu, Result: %d", gethrtime(), vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts < min_time);
+		zfs_dbgmsg("Now: %llu, Last: %llu, Diff: %llu, Result: %d", gethrtime(), vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts < zfs_vdev_min_wait_before_speculative_prefetch);
 		zfs_dbgmsg("Last prio: %d", vq->vq_last_prio);
-		if (gethrtime() - vq->vq_io_complete_ts < min_time &&
+		if (gethrtime() - vq->vq_io_complete_ts < zfs_vdev_min_wait_before_speculative_prefetch &&
 			vq->vq_last_prio == ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 			/* Don't issue speculative prefetches if any other IO was active in 
 			 * the last 1 seconds, unless we are only doing speculative 
 			 * prefetches right now */
-			zfs_dbgmsg("No prefetch because there was an active IO in the last 1 seconds");
+			zfs_dbgmsg("No prefetch because there was an active IO in the last %d nanoseconds", zfs_vdev_min_wait_before_speculative_prefetch);
 			// Sleep until the last IO is at least 1 seconds old
-			mutex_exit(&vq->vq_lock);
-			zfs_sleep_until(vq->vq_io_complete_ts + min_time);
-			mutex_enter(&vq->vq_lock);
-			goto start;
+			return (ZIO_PRIORITY_NUM_QUEUEABLE);
 		}
 	}
 
@@ -1061,7 +1055,27 @@ vdev_queue_io_done(zio_t *zio)
 	mutex_enter(&vq->vq_lock);
 	vdev_queue_pending_remove(vq, zio);
 
-	while ((nio = vdev_queue_io_to_issue(vq)) != NULL) {
+	while ((nio = vdev_queue_io_to_issue(vq)) != NULL || vq->vq_cqueued > 0) {
+		if (nio == NULL) {
+			/* NIO can only be NULL if there is a pending speculative prefetch
+			 * that is still waiting for other I/Os to complete or the required 
+			 * delay has not passed yet. In this case
+			 * we want to wait and retry to schedule I/Os later */
+			for (int i = 0; i < ZIO_PRIORITY_SPECULATIVE_PREFETCH; i++) {
+				if (vq->vq_cactive[i] > 0) {
+					/* Other I/O is still in progress, meaning, that this 
+					 * function is going to be called anyway. No need to wait
+					 * here. */
+					mutex_exit(&vq->vq_lock);
+					break;
+				}
+			}
+			hrtime_t wait_until = vq->vq_io_complete_ts + 
+				zfs_vdev_min_wait_before_speculative_prefetch;
+			mutex_exit(&vq->vq_lock);
+			zfs_sleep_until(wait_until);
+			continue;
+		}
 		mutex_exit(&vq->vq_lock);
 		if (nio->io_done == vdev_queue_agg_io_done) {
 			while ((dio = zio_walk_parents(nio, &zl)) != NULL) {
