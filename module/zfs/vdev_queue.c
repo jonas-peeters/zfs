@@ -493,7 +493,9 @@ found:
 				// Get duration of last IO in nanoseconds
 				hrtime_t last_duration = vq->vq_io_delta_ts;
 				// Sleep 1/10th of the duration of the last IO
+				mutex_exit(&vq->vq_lock);
 				zfs_sleep_until(gethrtime() + (last_duration / 10));
+				mutex_enter(&vq->vq_lock);
 				goto again;
 			}
 		}
@@ -512,7 +514,9 @@ found:
 			// Get duration of last IO in nanoseconds
 			hrtime_t last_duration = vq->vq_io_delta_ts;
 			// Sleep 1/10th of the duration of the last IO
+			mutex_exit(&vq->vq_lock);
 			zfs_sleep_until(gethrtime() + (last_duration / 10));
+			mutex_enter(&vq->vq_lock);
 			goto again;
 		}
 	}
