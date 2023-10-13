@@ -438,10 +438,10 @@ vdev_queue_class_to_issue(vdev_queue_t *vq)
 	uint32_t cq = vq->vq_cqueued;
 	zio_priority_t p, p1;
 
-	int nothing_found_counter = 0;
+	int nothing_else_found_counter = 0;
 
-again:
-	nothing_found_counter++;
+start:
+	nothing_else_found_counter++;
 
 	if (cq == 0 || vq->vq_active >= zfs_vdev_max_active)
 		return (ZIO_PRIORITY_NUM_QUEUEABLE);
@@ -478,46 +478,34 @@ again:
 
 found:
 	if (p == ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
-		zfs_dbgmsg("Active IOs: %d:%d:%d:%d:%d:%d:%d:%d", 
-			vq->vq_cactive[0], vq->vq_cactive[1], vq->vq_cactive[2], vq->vq_cactive[3], vq->vq_cactive[4], vq->vq_cactive[5], vq->vq_cactive[6], vq->vq_cactive[7]);
-		if (nothing_found_counter > 20) {
-			zfs_dbgmsg("No other IO found in 20 tries, issuing speculative prefetch");
-			goto finish;
-		}
-
 		for (int i = 0; i < ZIO_PRIORITY_SPECULATIVE_PREFETCH; i++) {
 			if (vq->vq_cactive[i] > 0) {
 				/* Don't issue speculative prefetches if there are any other 
 				 * active IOs */
-				zfs_dbgmsg("No prefetch because there are active IOs");
-				// Get duration of last IO in nanoseconds
-				hrtime_t last_duration = vq->vq_io_delta_ts;
-				// Sleep 1/10th of the duration of the last IO
-				mutex_exit(&vq->vq_lock);
-				zfs_sleep_until(gethrtime() + (last_duration / 10));
-				mutex_enter(&vq->vq_lock);
-				goto again;
+				zfs_dbgmsg("No prefetch because there are active IOs this one will be rescheduled when they are done");
+				return (ZIO_PRIORITY_NUM_QUEUEABLE);
 			}
 		}
 
-		// 0.001 seconds in nanoseconds
-		long min_time = 1000000L;
+		if (nothing_else_found_counter >= 10) {
+			goto finish;
+		}
+
+		// 1 seconds in nanoseconds
+		long min_time = NSEC_PER_SEC;
 		zfs_dbgmsg("Now: %llu, Last: %llu, Diff: %llu, Result: %d", gethrtime(), vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts < min_time);
 		zfs_dbgmsg("Last prio: %d", vq->vq_last_prio);
 		if (gethrtime() - vq->vq_io_complete_ts < min_time &&
-			vq->vq_last_prio != ZIO_PRIORITY_SPECULATIVE_PREFETCH &&
-			nothing_found_counter < 20) {
+			vq->vq_last_prio != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 			/* Don't issue speculative prefetches if any other IO was active in 
 			 * the last 1 seconds, unless we are only doing speculative 
 			 * prefetches right now */
 			zfs_dbgmsg("No prefetch because there was an active IO in the last 1 seconds");
-			// Get duration of last IO in nanoseconds
-			hrtime_t last_duration = vq->vq_io_delta_ts;
-			// Sleep 1/10th of the duration of the last IO
+			// Sleep until the last IO is at least 1 seconds old
 			mutex_exit(&vq->vq_lock);
-			zfs_sleep_until(gethrtime() + (last_duration / 10));
+			zfs_sleep_until(gethrtime() - vq->vq_io_complete_ts + min_time);
 			mutex_enter(&vq->vq_lock);
-			goto again;
+			goto start;
 		}
 	}
 
