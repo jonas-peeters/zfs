@@ -496,7 +496,7 @@ found:
 		zfs_dbgmsg("Now: %llu, Last: %llu, Diff: %llu, Result: %d", gethrtime(), vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts < min_time);
 		zfs_dbgmsg("Last prio: %d", vq->vq_last_prio);
 		if (gethrtime() - vq->vq_io_complete_ts < min_time &&
-			vq->vq_last_prio >= ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
+			vq->vq_last_prio == ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 			/* Don't issue speculative prefetches if any other IO was active in 
 			 * the last 1 seconds, unless we are only doing speculative 
 			 * prefetches right now */
@@ -510,7 +510,8 @@ found:
 	}
 
 finish:
-	vq->vq_last_prio = p;
+	if (p != ZIO_PRIORITY_NUM_QUEUEABLE)
+		vq->vq_last_prio = p;
 	return (p);
 }
 
