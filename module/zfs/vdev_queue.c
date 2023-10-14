@@ -1091,12 +1091,19 @@ vdev_queue_io_done(zio_t *zio)
 	mutex_enter(&vq->vq_lock);
 	int8_t allow_speculative_prefetched = B_FALSE;
 	if (zio->io_priority == ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
+		for (int p = 0; p < ZIO_PRIORITY_SPECULATIVE_PREFETCH; p++) {
+			if (vq->vq_cactive[p] > 0) {
+				goto after_check;
+			}
+		}
+
 		uint32_t cq = vq->vq_cqueued;
 		uint32_t vq_sp_queued = (cq & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH));
 		if (vq_sp_queued == cq) {
 			allow_speculative_prefetched = B_TRUE;
 		}
 	}
+after_check:
 	vdev_queue_pending_remove(vq, zio);
 
 	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetched))
@@ -1116,11 +1123,16 @@ vdev_queue_io_done(zio_t *zio)
 		mutex_enter(&vq->vq_lock);
 	}
 
+	uint32_t cq = vq->vq_cqueued;
+
+	// log cq bitwise, e.g. 0b1010
+	zfs_dbgmsg("vdev_queue_io_done: cq=%u", cq);
+
 	mutex_exit(&vq->vq_lock);
 
-	if (vq->vq_cqueued > 0) {
+	if (cq > 0) {
 		/* Check if the queued classes are only speculative prefetches*/
-		uint32_t cq = vq->vq_cqueued;
+
 		uint32_t vq_sp_queued = (cq & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH));
 		if (vq_sp_queued != cq) {
 			/* Some queued I/Os are not speculative prefetches */
