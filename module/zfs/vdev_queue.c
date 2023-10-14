@@ -483,7 +483,6 @@ found:
 		return (ZIO_PRIORITY_NUM_QUEUEABLE);
 	}
 
-finish:
 	return (p);
 }
 
