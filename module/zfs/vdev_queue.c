@@ -516,6 +516,7 @@ vdev_queue_init(vdev_t *vd)
 	list_create(&vq->vq_active_list, sizeof (struct zio),
 	    offsetof(struct zio, io_queue_node.l));
 	mutex_init(&vq->vq_lock, NULL, MUTEX_DEFAULT, NULL);
+	mutex_init(&vq->vq_speculative_prefetch_lock, NULL, MUTEX_DEFAULT, NULL);
 }
 
 void
@@ -1025,6 +1026,7 @@ vdev_queue_io_later(void *arg)
 {
 	vdev_queue_t *vq = (vdev_queue_t *)arg;
 
+
 	zfs_dbgmsg("vdev_queue_io_later");
 	mutex_enter(&vq->vq_lock);
 begin_wait:
@@ -1072,6 +1074,7 @@ begin_wait:
 
 out:
 	zfs_dbgmsg("Finished thread to wait for speculative prefetches");
+	mutex_exit(&vq->vq_speculative_prefetch_lock);
 }
 
 void
@@ -1127,15 +1130,16 @@ vdev_queue_io_done(zio_t *zio)
 		/* When there are only speculative prefetches left, we want to wait and
 		 * try to schedule these a bit later, in case new IO requests come in */
 		if (vdev_queue_io_taskq == NULL) {
-			vdev_queue_io_taskq = taskq_create("vdev_queue_io_taskq", 1, 
-				minclsyspri, 1, 1, TASKQ_PREPOPULATE);
+			vdev_queue_io_taskq = taskq_create("vdev_queue_io_taskq", 100, 
+				minclsyspri, 1, 1, TASKQ_DYNAMIC | TASKQ_THREADS_CPU_PCT);
 		}
 		if (vdev_queue_io_taskq == NULL) {
 			zfs_dbgmsg("vdev_queue_io_done: taskq_create failed");
 			return;
 		}
-		if (taskq_dispatch(vdev_queue_io_taskq, vdev_queue_io_later, vq, 
-			TQ_SLEEP)) {
+		if (mutex_tryenter(&vq->vq_speculative_prefetch_lock)) {
+			taskq_dispatch(vdev_queue_io_taskq, vdev_queue_io_later, vq, 
+			TQ_SLEEP);
 			zfs_dbgmsg("Started thread to wait for speculative prefetches");
 		} else {
 			zfs_dbgmsg("A thread to wait for speculative prefetches is already running");
