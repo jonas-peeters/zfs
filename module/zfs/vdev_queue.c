@@ -1055,13 +1055,11 @@ begin_wait:
 		mutex_exit(&vq->vq_lock);
 		goto out;
 	}
-	if (vq->vq_cqueued != (vq->vq_cqueued & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH))) {
-		/* There are non-speculative prefetches queued, try again later */
-		zfs_dbgmsg("vdev_queue_io_later: non-speculative prefetches queued, try again later");
-		goto begin_wait;
-	}
+	int8_t allow_speculative_prefetched = vq->vq_cqueued == 
+		(vq->vq_cqueued & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH));
 
-	while ((nio = vdev_queue_io_to_issue(vq, B_TRUE)) != NULL) {
+	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetched)) != 
+		NULL) {
 		mutex_exit(&vq->vq_lock);
 		if (nio->io_done == vdev_queue_agg_io_done) {
 			while ((zio = zio_walk_parents(nio, &zl)) != NULL) {
