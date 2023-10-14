@@ -838,8 +838,7 @@ vdev_queue_aggregate(vdev_queue_t *vq, zio_t *zio)
 	ASSERT3U(abd_get_size(aio->io_abd), ==, aio->io_size);
 
 	/*
-	 * Callers must call zio_vdev_io_bypass() and zfs_dbgmsg("execute zio, priority %d", zio->io_priority);
-			zio_execute() for
+	 * Callers must call zio_vdev_io_bypass() and zio_execute() for
 	 * aggregated (parent) I/Os so that we could avoid dropping the
 	 * queue's lock here to avoid a deadlock that we could encounter
 	 * due to lock order reversal between vq_lock and io_lock in
@@ -1012,7 +1011,7 @@ vdev_queue_io(zio_t *zio)
 		while ((dio = zio_walk_parents(nio, &zl)) != NULL) {
 			ASSERT3U(dio->io_type, ==, nio->io_type);
 			zio_vdev_io_bypass(dio);
-			zfs_dbgmsg("execute zio, priority %d", zio->io_priority);
+			zfs_dbgmsg("execute zio, priority %d", dio->io_priority);
 			zio_execute(dio);
 		}
 		zio_nowait(nio);
@@ -1068,7 +1067,7 @@ begin_wait:
 			zio_nowait(nio);
 		} else {
 			zio_vdev_io_reissue(nio);
-			zfs_dbgmsg("execute zio, priority %d", zio->io_priority);
+			zfs_dbgmsg("execute zio, priority %d", nio->io_priority);
 			zio_execute(nio);
 		}
 		mutex_enter(&vq->vq_lock);
@@ -1115,13 +1114,13 @@ after_check:
 			while ((dio = zio_walk_parents(nio, &zl)) != NULL) {
 				ASSERT3U(dio->io_type, ==, nio->io_type);
 				zio_vdev_io_bypass(dio);
-				zfs_dbgmsg("execute zio, priority %d", zio->io_priority);
+				zfs_dbgmsg("execute zio, priority %d", dio->io_priority);
 			zio_execute(dio);
 			}
 			zio_nowait(nio);
 		} else {
 			zio_vdev_io_reissue(nio);
-			zfs_dbgmsg("execute zio, priority %d", zio->io_priority);
+			zfs_dbgmsg("execute zio, priority %d", nio->io_priority);
 			zio_execute(nio);
 		}
 		mutex_enter(&vq->vq_lock);
