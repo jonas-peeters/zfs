@@ -1042,6 +1042,46 @@ vdev_queue_io(zio_t *zio)
 }
 
 void
+vdev_queue_io_later(vdev_queue_t *vq)
+{
+	zfs_dbgmsg("vdev_queue_io_later");
+	mutex_enter(&vq->vq_lock);
+	hrtime_t wait_until = vq->vq_io_complete_ts +
+			zfs_vdev_min_wait_before_speculative_prefetch;
+	mutex_exit(&vq->vq_lock);
+	zfs_dbgmsg("vdev_queue_io_later: wait_until=%llu", wait_until);
+	zfs_sleep_until(wait_until);
+
+	zio_t *zio, *nio;
+	zio_link_t *zl = NULL;
+
+	mutex_enter(&vq->vq_lock);
+	zfs_dbgmsg("vdev_queue_io_later: vq_active=%llu, vq_cqueued=%llu",
+			vq->vq_active, vq->vq_cqueued);
+	if (vq->vq_active > 0 || vq->vq_cqueued == 0) {
+		mutex_exit(&vq->vq_lock);
+		return;
+	}
+
+	while ((nio = vdev_queue_io_to_issue(vq)) != NULL) {
+		mutex_exit(&vq->vq_lock);
+		if (nio->io_done == vdev_queue_agg_io_done) {
+			while ((zio = zio_walk_parents(nio, &zl)) != NULL) {
+				ASSERT3U(zio->io_type, ==, nio->io_type);
+				zio_vdev_io_bypass(zio);
+				zio_execute(zio);
+			}
+			zio_nowait(nio);
+		} else {
+			zio_vdev_io_reissue(nio);
+			zio_execute(nio);
+		}
+		mutex_enter(&vq->vq_lock);
+	}
+	mutex_exit(&vq->vq_lock);
+}
+
+void
 vdev_queue_io_done(zio_t *zio)
 {
 	vdev_queue_t *vq = &zio->io_vd->vdev_queue;
@@ -1055,27 +1095,7 @@ vdev_queue_io_done(zio_t *zio)
 	mutex_enter(&vq->vq_lock);
 	vdev_queue_pending_remove(vq, zio);
 
-	while ((nio = vdev_queue_io_to_issue(vq)) != NULL || vq->vq_cqueued > 0) {
-		if (nio == NULL) {
-			/* NIO can only be NULL if there is a pending speculative prefetch
-			 * that is still waiting for other I/Os to complete or the required 
-			 * delay has not passed yet. In this case
-			 * we want to wait and retry to schedule I/Os later */
-			for (int i = 0; i < ZIO_PRIORITY_SPECULATIVE_PREFETCH; i++) {
-				if (vq->vq_cactive[i] > 0) {
-					/* Other I/O is still in progress, meaning, that this 
-					 * function is going to be called anyway. No need to wait
-					 * here. */
-					mutex_exit(&vq->vq_lock);
-					break;
-				}
-			}
-			hrtime_t wait_until = vq->vq_io_complete_ts + 
-				zfs_vdev_min_wait_before_speculative_prefetch;
-			mutex_exit(&vq->vq_lock);
-			zfs_sleep_until(wait_until);
-			continue;
-		}
+	while ((nio = vdev_queue_io_to_issue(vq)) != NULL) {
 		mutex_exit(&vq->vq_lock);
 		if (nio->io_done == vdev_queue_agg_io_done) {
 			while ((dio = zio_walk_parents(nio, &zl)) != NULL) {
@@ -1092,6 +1112,12 @@ vdev_queue_io_done(zio_t *zio)
 	}
 
 	mutex_exit(&vq->vq_lock);
+
+	if (vq->vq_cqueued > 0) {
+		/* These are speculative prefetches that are waiting for other I/Os to 
+		 * complete. We want to wait and retry to schedule I/Os later */
+		taskq_dispatch(system_delay_taskq, vdev_queue_io_later, vq, TQ_SLEEP);
+	}
 }
 
 void
