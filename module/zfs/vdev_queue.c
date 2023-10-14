@@ -1021,7 +1021,7 @@ vdev_queue_io(zio_t *zio)
 
 static taskq_t *vdev_queue_io_taskq;
 
-void
+static void
 vdev_queue_io_later(void *arg)
 {
 	vdev_queue_t *vq = (vdev_queue_t *)arg;
@@ -1051,7 +1051,7 @@ begin_wait:
 			vq->vq_active, vq->vq_cqueued);
 	if (vq->vq_active > 0 || vq->vq_cqueued == 0) {
 		mutex_exit(&vq->vq_lock);
-		return;
+		goto out;
 	}
 
 	while ((nio = vdev_queue_io_to_issue(vq, B_TRUE)) != NULL) {
@@ -1070,6 +1070,9 @@ begin_wait:
 		mutex_enter(&vq->vq_lock);
 	}
 	mutex_exit(&vq->vq_lock);
+
+out:
+	zfs_dbgmsg("Finished thread to wait for speculative prefetches");
 }
 
 void
@@ -1132,9 +1135,9 @@ vdev_queue_io_done(zio_t *zio)
 			zfs_dbgmsg("vdev_queue_io_done: taskq_create failed");
 			return;
 		}
-		if (vdev_queue_io_taskq->tq_nactive == 0) {
-			taskq_dispatch(vdev_queue_io_taskq, vdev_queue_io_later, vq, 
-				TQ_SLEEP);
+		if (taskq_dispatch(vdev_queue_io_taskq, vdev_queue_io_later, vq, 
+			TQ_SLEEP)) {
+			zfs_dbgmsg("Started thread to wait for speculative prefetches");
 		} else {
 			zfs_dbgmsg("A thread to wait for speculative prefetches is already running");
 		}
