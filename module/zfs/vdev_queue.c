@@ -440,7 +440,7 @@ vdev_queue_class_max_active(vdev_queue_t *vq, zio_priority_t p)
  * there is no eligible class.
  */
 static zio_priority_t
-vdev_queue_class_to_issue(vdev_queue_t *vq)
+vdev_queue_class_to_issue(vdev_queue_t *vq, int8_t allow_speculative_prefetch)
 {
 	uint32_t cq = vq->vq_cqueued;
 	zio_priority_t p, p1;
@@ -479,33 +479,11 @@ vdev_queue_class_to_issue(vdev_queue_t *vq)
 	}
 
 found:
-	if (p == ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
-		for (int i = 0; i < ZIO_PRIORITY_SPECULATIVE_PREFETCH; i++) {
-			if (vq->vq_cactive[i] > 0) {
-				/* Don't issue speculative prefetches if there are any other 
-				 * active IOs */
-				zfs_dbgmsg("No prefetch because there are active IOs this one will be rescheduled when they are done");
-				return (ZIO_PRIORITY_NUM_QUEUEABLE);
-			}
-		}
-
-		// 1 seconds in nanoseconds
-		zfs_dbgmsg("Now: %llu, Last: %llu, Diff: %llu, Result: %d", gethrtime(), vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts, gethrtime() - vq->vq_io_complete_ts < zfs_vdev_min_wait_before_speculative_prefetch);
-		zfs_dbgmsg("Last prio: %d", vq->vq_last_prio);
-		if (gethrtime() - vq->vq_io_complete_ts < zfs_vdev_min_wait_before_speculative_prefetch &&
-			vq->vq_last_prio == ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
-			/* Don't issue speculative prefetches if any other IO was active in 
-			 * the last 1 seconds, unless we are only doing speculative 
-			 * prefetches right now */
-			//zfs_dbgmsg("No prefetch because there was an active IO in the last %d nanoseconds", zfs_vdev_min_wait_before_speculative_prefetch);
-			// Sleep until the last IO is at least 1 seconds old
-			//return (ZIO_PRIORITY_NUM_QUEUEABLE);
-		}
+	if (p == ZIO_PRIORITY_SPECULATIVE_PREFETCH && !allow_speculative_prefetch) {
+		return (ZIO_PRIORITY_NUM_QUEUEABLE);
 	}
 
 finish:
-	if (p != ZIO_PRIORITY_NUM_QUEUEABLE)
-		vq->vq_last_prio = p;
 	return (p);
 }
 
@@ -870,7 +848,7 @@ vdev_queue_aggregate(vdev_queue_t *vq, zio_t *zio)
 }
 
 static zio_t *
-vdev_queue_io_to_issue(vdev_queue_t *vq)
+vdev_queue_io_to_issue(vdev_queue_t *vq, int8_t allow_speculative_prefetch)
 {
 	zio_t *zio, *aio;
 	zio_priority_t p;
@@ -880,7 +858,7 @@ vdev_queue_io_to_issue(vdev_queue_t *vq)
 again:
 	ASSERT(MUTEX_HELD(&vq->vq_lock));
 
-	p = vdev_queue_class_to_issue(vq);
+	p = vdev_queue_class_to_issue(vq, allow_speculative_prefetch);
 
 	if (p == ZIO_PRIORITY_NUM_QUEUEABLE) {
 		/* No eligible queued i/os */
@@ -1022,7 +1000,7 @@ vdev_queue_io(zio_t *zio)
 
 	mutex_enter(&vq->vq_lock);
 	vdev_queue_io_add(vq, zio);
-	nio = vdev_queue_io_to_issue(vq);
+	nio = vdev_queue_io_to_issue(vq, vq->vq_active == 0);
 	mutex_exit(&vq->vq_lock);
 
 	if (nio == NULL)
@@ -1041,11 +1019,16 @@ vdev_queue_io(zio_t *zio)
 	return (nio);
 }
 
+static taskq_t *vdev_queue_io_taskq;
+
 void
-vdev_queue_io_later(vdev_queue_t *vq)
+vdev_queue_io_later(void *arg)
 {
+	vdev_queue_t *vq = (vdev_queue_t *)arg;
+
 	zfs_dbgmsg("vdev_queue_io_later");
 	mutex_enter(&vq->vq_lock);
+begin_wait:
 	hrtime_t wait_until = vq->vq_io_complete_ts +
 			zfs_vdev_min_wait_before_speculative_prefetch;
 	mutex_exit(&vq->vq_lock);
@@ -1056,14 +1039,22 @@ vdev_queue_io_later(vdev_queue_t *vq)
 	zio_link_t *zl = NULL;
 
 	mutex_enter(&vq->vq_lock);
-	zfs_dbgmsg("vdev_queue_io_later: vq_active=%llu, vq_cqueued=%llu",
+	hrtime_t now = gethrtime();
+	if (now < vq->vq_io_complete_ts + 
+		zfs_vdev_min_wait_before_speculative_prefetch) {
+		/* We were woken up too early, try again later */
+		zfs_dbgmsg("vdev_queue_io_later: too early, try again later");
+		goto begin_wait;
+	}
+
+	zfs_dbgmsg("vdev_queue_io_later: vq_active=%u, vq_cqueued=%u",
 			vq->vq_active, vq->vq_cqueued);
 	if (vq->vq_active > 0 || vq->vq_cqueued == 0) {
 		mutex_exit(&vq->vq_lock);
 		return;
 	}
 
-	while ((nio = vdev_queue_io_to_issue(vq)) != NULL) {
+	while ((nio = vdev_queue_io_to_issue(vq, B_TRUE)) != NULL) {
 		mutex_exit(&vq->vq_lock);
 		if (nio->io_done == vdev_queue_agg_io_done) {
 			while ((zio = zio_walk_parents(nio, &zl)) != NULL) {
@@ -1093,9 +1084,18 @@ vdev_queue_io_done(zio_t *zio)
 	vq->vq_io_delta_ts = zio->io_delta = now - zio->io_timestamp;
 
 	mutex_enter(&vq->vq_lock);
+	int8_t allow_speculative_prefetched = B_FALSE;
+	if (zio->io_priority == ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
+		uint32_t cq = vq->vq_cqueued;
+		uint32_t vq_sp_queued = (cq & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH));
+		if (vq_sp_queued == cq) {
+			allow_speculative_prefetched = B_TRUE;
+		}
+	}
 	vdev_queue_pending_remove(vq, zio);
 
-	while ((nio = vdev_queue_io_to_issue(vq)) != NULL) {
+	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetched))
+		!= NULL) {
 		mutex_exit(&vq->vq_lock);
 		if (nio->io_done == vdev_queue_agg_io_done) {
 			while ((dio = zio_walk_parents(nio, &zl)) != NULL) {
@@ -1113,11 +1113,32 @@ vdev_queue_io_done(zio_t *zio)
 
 	mutex_exit(&vq->vq_lock);
 
-	//if (vq->vq_cqueued > 0) {
-		/* These are speculative prefetches that are waiting for other I/Os to 
-		 * complete. We want to wait and retry to schedule I/Os later */
-	//	taskq_dispatch(system_delay_taskq, vdev_queue_io_later, vq, TQ_SLEEP);
-	//}
+	if (vq->vq_cqueued > 0) {
+		/* Check if the queued classes are only speculative prefetches*/
+		uint32_t cq = vq->vq_cqueued;
+		uint32_t vq_sp_queued = (cq & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH));
+		if (vq_sp_queued != cq) {
+			/* Some queued I/Os are not speculative prefetches */
+			return;
+		}
+
+		/* When there are only speculative prefetches left, we want to wait and
+		 * try to schedule these a bit later, in case new IO requests come in */
+		if (vdev_queue_io_taskq == NULL) {
+			vdev_queue_io_taskq = taskq_create("vdev_queue_io_taskq", 1, 
+				minclsyspri, 1, 1, TASKQ_PREPOPULATE);
+		}
+		if (vdev_queue_io_taskq == NULL) {
+			zfs_dbgmsg("vdev_queue_io_done: taskq_create failed");
+			return;
+		}
+		if (vdev_queue_io_taskq->tq_nactive == 0) {
+			taskq_dispatch(vdev_queue_io_taskq, vdev_queue_io_later, vq, 
+				TQ_SLEEP);
+		} else {
+			zfs_dbgmsg("A thread to wait for speculative prefetches is already running");
+		}
+	}
 }
 
 void
