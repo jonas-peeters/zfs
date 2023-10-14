@@ -497,9 +497,9 @@ found:
 			/* Don't issue speculative prefetches if any other IO was active in 
 			 * the last 1 seconds, unless we are only doing speculative 
 			 * prefetches right now */
-			zfs_dbgmsg("No prefetch because there was an active IO in the last %d nanoseconds", zfs_vdev_min_wait_before_speculative_prefetch);
+			//zfs_dbgmsg("No prefetch because there was an active IO in the last %d nanoseconds", zfs_vdev_min_wait_before_speculative_prefetch);
 			// Sleep until the last IO is at least 1 seconds old
-			return (ZIO_PRIORITY_NUM_QUEUEABLE);
+			//return (ZIO_PRIORITY_NUM_QUEUEABLE);
 		}
 	}
 
@@ -1113,11 +1113,11 @@ vdev_queue_io_done(zio_t *zio)
 
 	mutex_exit(&vq->vq_lock);
 
-	if (vq->vq_cqueued > 0) {
+	//if (vq->vq_cqueued > 0) {
 		/* These are speculative prefetches that are waiting for other I/Os to 
 		 * complete. We want to wait and retry to schedule I/Os later */
-		taskq_dispatch(system_delay_taskq, vdev_queue_io_later, vq, TQ_SLEEP);
-	}
+	//	taskq_dispatch(system_delay_taskq, vdev_queue_io_later, vq, TQ_SLEEP);
+	//}
 }
 
 void
