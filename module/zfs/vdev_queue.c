@@ -282,6 +282,7 @@ vdev_queue_class_add(vdev_queue_t *vq, zio_t *zio)
 {
 	zio_priority_t p = zio->io_priority;
 	vq->vq_cqueued |= 1U << p;
+	zfs_dbgmsg("vdev_queue_class_add: priority %u -> %u -> %u", p, 1U << p, vq->vq_cqueued);
 	if (vdev_queue_class_fifo(p))
 		list_insert_tail(&vq->vq_class[p].vqc_list, zio);
 	else
@@ -1104,6 +1105,7 @@ vdev_queue_io_done(zio_t *zio)
 		}
 	}
 after_check:
+	zfs_dbgmsg("Allowed to do spec prefetch: %d", allow_speculative_prefetched);
 	vdev_queue_pending_remove(vq, zio);
 
 	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetched))
