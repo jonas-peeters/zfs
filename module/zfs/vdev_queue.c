@@ -1055,7 +1055,7 @@ begin_wait:
 		mutex_exit(&vq->vq_lock);
 		goto out;
 	}
-	if (vq->vq_cqueued != vq->vq_cqueued & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH)) {
+	if (vq->vq_cqueued != (vq->vq_cqueued & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH))) {
 		/* There are non-speculative prefetches queued, try again later */
 		zfs_dbgmsg("vdev_queue_io_later: non-speculative prefetches queued, try again later");
 		goto begin_wait;
