@@ -2243,41 +2243,6 @@ __zio_execute(zio_t *zio)
 {
 	ASSERT3U(zio->io_queued_timestamp, >, 0);
 
-	switch (zio->io_priority) {
-		case ZIO_PRIORITY_SYNC_READ:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SYNC_READ");
-			break;
-		case ZIO_PRIORITY_SYNC_WRITE:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SYNC_WRITE");
-			break;
-		case ZIO_PRIORITY_ASYNC_READ:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_ASYNC_READ");
-			break;
-		case ZIO_PRIORITY_SPECULATIVE_PREFETCH:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SPECULATIVE_PREFETCH");
-			break;
-		case ZIO_PRIORITY_ASYNC_WRITE:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_ASYNC_WRITE");
-			break;
-		case ZIO_PRIORITY_SCRUB:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SCRUB");
-			break;
-		case ZIO_PRIORITY_REMOVAL:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_REMOVAL");
-			break;
-		case ZIO_PRIORITY_INITIALIZING:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_INITIALIZING");
-			break;
-		case ZIO_PRIORITY_TRIM:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_TRIM");
-			break;
-		case ZIO_PRIORITY_REBUILD:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_REBUILD");
-			break;
-		default:
-			break;
-	}
-
 	while (zio->io_stage < ZIO_STAGE_DONE) {
 		enum zio_stage pipeline = zio->io_pipeline;
 		enum zio_stage stage = zio->io_stage;

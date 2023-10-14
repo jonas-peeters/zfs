@@ -865,40 +865,40 @@ again:
 		return (NULL);
 	}
 
-	/*switch (p) {
+	switch (p) {
 		case ZIO_PRIORITY_SYNC_READ:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SYNC_READ");
+			zfs_dbgmsg("ZIO_PRIORITY_SYNC_READ");
 			break;
 		case ZIO_PRIORITY_SYNC_WRITE:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SYNC_WRITE");
+			zfs_dbgmsg("ZIO_PRIORITY_SYNC_WRITE");
 			break;
 		case ZIO_PRIORITY_ASYNC_READ:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_ASYNC_READ");
+			zfs_dbgmsg("ZIO_PRIORITY_ASYNC_READ");
 			break;
 		case ZIO_PRIORITY_SPECULATIVE_PREFETCH:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SPECULATIVE_PREFETCH");
+			zfs_dbgmsg("ZIO_PRIORITY_SPECULATIVE_PREFETCH");
 			break;
 		case ZIO_PRIORITY_ASYNC_WRITE:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_ASYNC_WRITE");
+			zfs_dbgmsg("ZIO_PRIORITY_ASYNC_WRITE");
 			break;
 		case ZIO_PRIORITY_SCRUB:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SCRUB");
+			zfs_dbgmsg("ZIO_PRIORITY_SCRUB");
 			break;
 		case ZIO_PRIORITY_REMOVAL:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_REMOVAL");
+			zfs_dbgmsg("ZIO_PRIORITY_REMOVAL");
 			break;
 		case ZIO_PRIORITY_INITIALIZING:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_INITIALIZING");
+			zfs_dbgmsg("ZIO_PRIORITY_INITIALIZING");
 			break;
 		case ZIO_PRIORITY_TRIM:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_TRIM");
+			zfs_dbgmsg("ZIO_PRIORITY_TRIM");
 			break;
 		case ZIO_PRIORITY_REBUILD:
-			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_REBUILD");
+			zfs_dbgmsg("ZIO_PRIORITY_REBUILD");
 			break;
 		default:
 			break;
-	}*/
+	}
 	
 
 	if (vdev_queue_class_fifo(p)) {
