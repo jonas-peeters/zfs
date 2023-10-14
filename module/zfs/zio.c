@@ -2242,6 +2242,7 @@ static inline void
 __zio_execute(zio_t *zio)
 {
 	ASSERT3U(zio->io_queued_timestamp, >, 0);
+	zfs_dbgmsg("prio: %d", zio->io_priority);
 
 	while (zio->io_stage < ZIO_STAGE_DONE) {
 		enum zio_stage pipeline = zio->io_pipeline;
