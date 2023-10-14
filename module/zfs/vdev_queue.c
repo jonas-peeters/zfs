@@ -1027,13 +1027,11 @@ vdev_queue_io_later(void *arg)
 	vdev_queue_t *vq = (vdev_queue_t *)arg;
 
 
-	zfs_dbgmsg("vdev_queue_io_later");
 	mutex_enter(&vq->vq_lock);
 begin_wait:
 	hrtime_t wait_until = vq->vq_io_complete_ts +
 			zfs_vdev_min_wait_before_speculative_prefetch;
 	mutex_exit(&vq->vq_lock);
-	zfs_dbgmsg("vdev_queue_io_later: wait_until=%llu", wait_until);
 	zfs_sleep_until(wait_until);
 
 	zio_t *zio, *nio;
@@ -1044,12 +1042,9 @@ begin_wait:
 	if (now < vq->vq_io_complete_ts + 
 		zfs_vdev_min_wait_before_speculative_prefetch) {
 		/* We were woken up too early, try again later */
-		zfs_dbgmsg("vdev_queue_io_later: too early, try again later");
 		goto begin_wait;
 	}
 
-	zfs_dbgmsg("vdev_queue_io_later: vq_active=%u, vq_cqueued=%u",
-			vq->vq_active, vq->vq_cqueued);
 	if (vq->vq_active > 0 || vq->vq_cqueued == 0) {
 		mutex_exit(&vq->vq_lock);
 		goto out;
@@ -1076,7 +1071,6 @@ begin_wait:
 	mutex_exit(&vq->vq_lock);
 
 out:
-	zfs_dbgmsg("Finished thread to wait for speculative prefetches");
 	mutex_exit(&vq->vq_speculative_prefetch_lock);
 }
 
@@ -1107,7 +1101,6 @@ vdev_queue_io_done(zio_t *zio)
 		}
 	}
 after_check:
-	zfs_dbgmsg("Allowed to do spec prefetch: %d", allow_speculative_prefetched);
 	vdev_queue_pending_remove(vq, zio);
 
 	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetched))
@@ -1129,9 +1122,6 @@ after_check:
 
 	uint32_t cq = vq->vq_cqueued;
 
-	// log cq bitwise, e.g. 0b1010
-	zfs_dbgmsg("vdev_queue_io_done: cq=%u", cq);
-
 	mutex_exit(&vq->vq_lock);
 
 	if (cq > 0) {
@@ -1150,15 +1140,12 @@ after_check:
 				minclsyspri, 1, 1, TASKQ_DYNAMIC | TASKQ_THREADS_CPU_PCT);
 		}
 		if (vdev_queue_io_taskq == NULL) {
-			zfs_dbgmsg("vdev_queue_io_done: taskq_create failed");
 			return;
 		}
 		if (mutex_tryenter(&vq->vq_speculative_prefetch_lock)) {
 			taskq_dispatch(vdev_queue_io_taskq, vdev_queue_io_later, vq, 
 			TQ_SLEEP);
-			zfs_dbgmsg("Started thread to wait for speculative prefetches");
 		} else {
-			zfs_dbgmsg("A thread to wait for speculative prefetches is already running");
 		}
 	}
 }
