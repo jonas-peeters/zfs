@@ -282,7 +282,6 @@ vdev_queue_class_add(vdev_queue_t *vq, zio_t *zio)
 {
 	zio_priority_t p = zio->io_priority;
 	vq->vq_cqueued |= 1U << p;
-	zfs_dbgmsg("vdev_queue_class_add: priority %u -> %u -> %u", p, 1U << p, vq->vq_cqueued);
 	if (vdev_queue_class_fifo(p))
 		list_insert_tail(&vq->vq_class[p].vqc_list, zio);
 	else
@@ -866,7 +865,7 @@ again:
 		return (NULL);
 	}
 
-	switch (p) {
+	/*switch (p) {
 		case ZIO_PRIORITY_SYNC_READ:
 			zfs_dbgmsg("vdev_queue_io_to_issue: ZIO_PRIORITY_SYNC_READ");
 			break;
@@ -899,7 +898,7 @@ again:
 			break;
 		default:
 			break;
-	}
+	}*/
 	
 
 	if (vdev_queue_class_fifo(p)) {
