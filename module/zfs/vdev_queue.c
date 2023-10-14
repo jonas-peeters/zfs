@@ -167,7 +167,7 @@ static uint_t zfs_vdev_rebuild_max_active = 3;
  * after the last I/O completed.  This is to prevent speculative prefetches
  * from interfering with interactive I/Os.
  */
-static long zfs_vdev_min_wait_before_speculative_prefetch = 1000000000L;
+static long zfs_vdev_min_wait_before_speculative_prefetch = 10000000L;
 
 /*
  * When the pool has less than zfs_vdev_async_write_active_min_dirty_percent
