@@ -730,7 +730,8 @@ vdev_queue_aggregate(vdev_queue_t *vq, zio_t *zio)
 	    (dio->io_flags & ZIO_FLAG_OPTIONAL)) &&
 	    IO_SPAN(first, dio) <= SPA_MAXBLOCKSIZE &&
 	    IO_GAP(last, dio) <= maxgap &&
-	    dio->io_type == zio->io_type) {
+	    dio->io_type == zio->io_type &&
+	    dio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 		last = dio;
 		if (!(last->io_flags & ZIO_FLAG_OPTIONAL))
 			mandatory = last;
