@@ -1051,18 +1051,21 @@ begin_wait:
 		mutex_exit(&vq->vq_lock);
 		goto out;
 	}
-	int8_t allow_speculative_prefetched = vq->vq_cqueued == 
+	int8_t allow_speculative_prefetches = vq->vq_cqueued == 
 		(vq->vq_cqueued & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH));
 
-	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetched)) != 
+	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetches)) != 
 		NULL) {
 		mutex_exit(&vq->vq_lock);
+		if (nio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
+			allow_speculative_prefetches = B_FALSE;
+		}
 		if (nio->io_done == vdev_queue_agg_io_done) {
 			while ((zio = zio_walk_parents(nio, &zl)) != NULL) {
 				ASSERT3U(zio->io_type, ==, nio->io_type);
 				zio_vdev_io_bypass(zio);
 				zfs_dbgmsg("execute zio, priority %d", zio->io_priority);
-			zio_execute(zio);
+				zio_execute(zio);
 			}
 			zio_nowait(nio);
 		} else {
@@ -1090,7 +1093,7 @@ vdev_queue_io_done(zio_t *zio)
 	vq->vq_io_delta_ts = zio->io_delta = now - zio->io_timestamp;
 
 	mutex_enter(&vq->vq_lock);
-	int8_t allow_speculative_prefetched = B_FALSE;
+	int8_t allow_speculative_prefetches = B_FALSE;
 	if (zio->io_priority == ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 		for (int p = 0; p < ZIO_PRIORITY_SPECULATIVE_PREFETCH; p++) {
 			if (vq->vq_cactive[p] > 0) {
@@ -1101,15 +1104,18 @@ vdev_queue_io_done(zio_t *zio)
 		uint32_t cq = vq->vq_cqueued;
 		uint32_t vq_sp_queued = (cq & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH));
 		if (vq_sp_queued == cq) {
-			allow_speculative_prefetched = B_TRUE;
+			allow_speculative_prefetches = B_TRUE;
 		}
 	}
 after_check:
 	vdev_queue_pending_remove(vq, zio);
 
-	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetched))
+	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetches))
 		!= NULL) {
 		mutex_exit(&vq->vq_lock);
+		if (nio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
+			allow_speculative_prefetches = B_FALSE;
+		}
 		if (nio->io_done == vdev_queue_agg_io_done) {
 			while ((dio = zio_walk_parents(nio, &zl)) != NULL) {
 				ASSERT3U(dio->io_type, ==, nio->io_type);
