@@ -1110,7 +1110,7 @@ vdev_queue_io_done(zio_t *zio)
 after_check:
 	vdev_queue_pending_remove(vq, zio);
 
-	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetches))
+	while ((nio = vdev_queue_io_to_issue(vq, B_FALSE))
 		!= NULL) {
 		mutex_exit(&vq->vq_lock);
 		if (nio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
