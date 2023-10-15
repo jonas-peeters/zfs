@@ -535,8 +535,8 @@ vdev_queue_fini(vdev_t *vd)
 	avl_destroy(&vq->vq_write_offset_tree);
 
 	list_destroy(&vq->vq_active_list);
-	mutex_destroy(&vq->vq_lock);
 	mutex_destroy(&vq->vq_speculative_prefetch_lock);
+	mutex_destroy(&vq->vq_lock);
 }
 
 static void
@@ -569,6 +569,7 @@ vdev_queue_is_interactive(zio_priority_t p)
 	case ZIO_PRIORITY_REMOVAL:
 	case ZIO_PRIORITY_INITIALIZING:
 	case ZIO_PRIORITY_REBUILD:
+	case ZIO_PRIORITY_SPECULATIVE_PREFETCH:
 		return (B_FALSE);
 	default:
 		return (B_TRUE);
