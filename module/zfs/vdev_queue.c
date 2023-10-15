@@ -483,6 +483,7 @@ found:
 		return (ZIO_PRIORITY_NUM_QUEUEABLE);
 	}
 
+	vq->vq_last_prio = p;
 	return (p);
 }
 
@@ -1112,6 +1113,7 @@ after_check:
 
 	while ((nio = vdev_queue_io_to_issue(vq, B_FALSE))
 		!= NULL) {
+		zfs_dbgmsg("zio priority %d", nio->io_priority);
 		mutex_exit(&vq->vq_lock);
 		if (nio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 			allow_speculative_prefetches = B_FALSE;
@@ -1121,7 +1123,7 @@ after_check:
 				ASSERT3U(dio->io_type, ==, nio->io_type);
 				zio_vdev_io_bypass(dio);
 				zfs_dbgmsg("execute zio, priority %d", dio->io_priority);
-			zio_execute(dio);
+				zio_execute(dio);
 			}
 			zio_nowait(nio);
 		} else {
