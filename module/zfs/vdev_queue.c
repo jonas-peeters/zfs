@@ -704,7 +704,8 @@ vdev_queue_aggregate(vdev_queue_t *vq, zio_t *zio)
 	    IO_SPAN(dio, last) <= limit &&
 	    IO_GAP(dio, first) <= maxgap &&
 	    dio->io_type == zio->io_type &&
-	    dio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
+	    (dio->io_priority == zio->io_priority ||
+	    dio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH)) {
 		first = dio;
 		if (mandatory == NULL && !(first->io_flags & ZIO_FLAG_OPTIONAL))
 			mandatory = first;
@@ -732,7 +733,8 @@ vdev_queue_aggregate(vdev_queue_t *vq, zio_t *zio)
 	    IO_SPAN(first, dio) <= SPA_MAXBLOCKSIZE &&
 	    IO_GAP(last, dio) <= maxgap &&
 	    dio->io_type == zio->io_type &&
-	    dio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
+	    (dio->io_priority == zio->io_priority ||
+	    dio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH)) {
 		last = dio;
 		if (!(last->io_flags & ZIO_FLAG_OPTIONAL))
 			mandatory = last;
@@ -1060,9 +1062,6 @@ begin_wait:
 	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetches)) != 
 		NULL) {
 		mutex_exit(&vq->vq_lock);
-		if (nio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
-			allow_speculative_prefetches = B_FALSE;
-		}
 		if (nio->io_done == vdev_queue_agg_io_done) {
 			while ((zio = zio_walk_parents(nio, &zl)) != NULL) {
 				ASSERT3U(zio->io_type, ==, nio->io_type);
@@ -1113,13 +1112,9 @@ vdev_queue_io_done(zio_t *zio)
 after_check:
 	vdev_queue_pending_remove(vq, zio);
 
-	while ((nio = vdev_queue_io_to_issue(vq, B_FALSE))
+	while ((nio = vdev_queue_io_to_issue(vq, allow_speculative_prefetches))
 		!= NULL) {
-		zfs_dbgmsg("zio priority %d", nio->io_priority);
 		mutex_exit(&vq->vq_lock);
-		if (nio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
-			allow_speculative_prefetches = B_FALSE;
-		}
 		if (nio->io_done == vdev_queue_agg_io_done) {
 			while ((dio = zio_walk_parents(nio, &zl)) != NULL) {
 				ASSERT3U(dio->io_type, ==, nio->io_type);
