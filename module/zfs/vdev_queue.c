@@ -876,41 +876,6 @@ again:
 		/* No eligible queued i/os */
 		return (NULL);
 	}
-
-	/*switch (p) {
-		case ZIO_PRIORITY_SYNC_READ:
-			zfs_dbgmsg("ZIO_PRIORITY_SYNC_READ");
-			break;
-		case ZIO_PRIORITY_SYNC_WRITE:
-			zfs_dbgmsg("ZIO_PRIORITY_SYNC_WRITE");
-			break;
-		case ZIO_PRIORITY_ASYNC_READ:
-			zfs_dbgmsg("ZIO_PRIORITY_ASYNC_READ");
-			break;
-		case ZIO_PRIORITY_SPECULATIVE_PREFETCH:
-			zfs_dbgmsg("ZIO_PRIORITY_SPECULATIVE_PREFETCH");
-			break;
-		case ZIO_PRIORITY_ASYNC_WRITE:
-			zfs_dbgmsg("ZIO_PRIORITY_ASYNC_WRITE");
-			break;
-		case ZIO_PRIORITY_SCRUB:
-			zfs_dbgmsg("ZIO_PRIORITY_SCRUB");
-			break;
-		case ZIO_PRIORITY_REMOVAL:
-			zfs_dbgmsg("ZIO_PRIORITY_REMOVAL");
-			break;
-		case ZIO_PRIORITY_INITIALIZING:
-			zfs_dbgmsg("ZIO_PRIORITY_INITIALIZING");
-			break;
-		case ZIO_PRIORITY_TRIM:
-			zfs_dbgmsg("ZIO_PRIORITY_TRIM");
-			break;
-		case ZIO_PRIORITY_REBUILD:
-			zfs_dbgmsg("ZIO_PRIORITY_REBUILD");
-			break;
-		default:
-			break;
-	}*/
 	
 
 	if (vdev_queue_class_fifo(p)) {
@@ -954,7 +919,6 @@ again:
 		if (zio->io_flags & ZIO_FLAG_NODATA) {
 			mutex_exit(&vq->vq_lock);
 			zio_vdev_io_bypass(zio);
-			zfs_dbgmsg("execute zio, priority %d", zio->io_priority);
 			zio_execute(zio);
 			mutex_enter(&vq->vq_lock);
 			goto again;
@@ -1023,7 +987,6 @@ vdev_queue_io(zio_t *zio)
 		while ((dio = zio_walk_parents(nio, &zl)) != NULL) {
 			ASSERT3U(dio->io_type, ==, nio->io_type);
 			zio_vdev_io_bypass(dio);
-			zfs_dbgmsg("execute zio, priority %d", dio->io_priority);
 			zio_execute(dio);
 		}
 		zio_nowait(nio);
@@ -1074,13 +1037,11 @@ begin_wait:
 			while ((zio = zio_walk_parents(nio, &zl)) != NULL) {
 				ASSERT3U(zio->io_type, ==, nio->io_type);
 				zio_vdev_io_bypass(zio);
-				zfs_dbgmsg("execute zio, priority %d", zio->io_priority);
 				zio_execute(zio);
 			}
 			zio_nowait(nio);
 		} else {
 			zio_vdev_io_reissue(nio);
-			zfs_dbgmsg("execute zio, priority %d", nio->io_priority);
 			zio_execute(nio);
 		}
 		mutex_enter(&vq->vq_lock);
@@ -1127,13 +1088,11 @@ after_check:
 			while ((dio = zio_walk_parents(nio, &zl)) != NULL) {
 				ASSERT3U(dio->io_type, ==, nio->io_type);
 				zio_vdev_io_bypass(dio);
-				zfs_dbgmsg("execute zio, priority %d", dio->io_priority);
 				zio_execute(dio);
 			}
 			zio_nowait(nio);
 		} else {
 			zio_vdev_io_reissue(nio);
-			zfs_dbgmsg("execute zio, priority %d", nio->io_priority);
 			zio_execute(nio);
 		}
 		mutex_enter(&vq->vq_lock);
