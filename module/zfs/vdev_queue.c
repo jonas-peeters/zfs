@@ -536,6 +536,7 @@ vdev_queue_fini(vdev_t *vd)
 
 	list_destroy(&vq->vq_active_list);
 	mutex_destroy(&vq->vq_lock);
+	mutex_destroy(&vq->vq_speculative_prefetch_lock);
 }
 
 static void
@@ -1033,7 +1034,8 @@ vdev_queue_io_later(void *arg)
 {
 	vdev_queue_t *vq = (vdev_queue_t *)arg;
 
-
+	if (&vq == NULL || &vq->vq_lock == NULL)
+		return;
 	mutex_enter(&vq->vq_lock);
 begin_wait:
 	hrtime_t wait_until = vq->vq_io_complete_ts +
@@ -1156,7 +1158,6 @@ after_check:
 		if (mutex_tryenter(&vq->vq_speculative_prefetch_lock)) {
 			taskq_dispatch(vdev_queue_io_taskq, vdev_queue_io_later, vq, 
 			TQ_SLEEP);
-		} else {
 		}
 	}
 }
