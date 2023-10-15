@@ -1035,7 +1035,7 @@ vdev_queue_io_later(void *arg)
 {
 	vdev_queue_t *vq = (vdev_queue_t *)arg;
 
-	if (&vq == NULL || &vq->vq_lock == NULL)
+	if (vq == NULL || &vq->vq_lock == NULL)
 		return;
 	mutex_enter(&vq->vq_lock);
 begin_wait:
