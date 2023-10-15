@@ -524,6 +524,8 @@ void
 vdev_queue_fini(vdev_t *vd)
 {
 	vdev_queue_t *vq = &vd->vdev_queue;
+	mutex_enter(&vq->vq_speculative_prefetch_lock);
+	mutex_enter(&vq->vq_lock);
 
 	for (zio_priority_t p = 0; p < ZIO_PRIORITY_NUM_QUEUEABLE; p++) {
 		if (vdev_queue_class_fifo(p))
@@ -535,6 +537,9 @@ vdev_queue_fini(vdev_t *vd)
 	avl_destroy(&vq->vq_write_offset_tree);
 
 	list_destroy(&vq->vq_active_list);
+	
+	mutex_exit(&vq->vq_speculative_prefetch_lock);
+	mutex_exit(&vq->vq_lock);
 	mutex_destroy(&vq->vq_speculative_prefetch_lock);
 	mutex_destroy(&vq->vq_lock);
 }
