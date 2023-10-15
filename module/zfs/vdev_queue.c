@@ -703,7 +703,8 @@ vdev_queue_aggregate(vdev_queue_t *vq, zio_t *zio)
 	    (dio->io_flags & ZIO_FLAG_AGG_INHERIT) == flags &&
 	    IO_SPAN(dio, last) <= limit &&
 	    IO_GAP(dio, first) <= maxgap &&
-	    dio->io_type == zio->io_type) {
+	    dio->io_type == zio->io_type &&
+	    dio->io_priority != ZIO_PRIORITY_SPECULATIVE_PREFETCH) {
 		first = dio;
 		if (mandatory == NULL && !(first->io_flags & ZIO_FLAG_OPTIONAL))
 			mandatory = first;
