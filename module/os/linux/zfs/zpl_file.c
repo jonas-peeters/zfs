@@ -937,7 +937,13 @@ disable_compression_for_dnode(dnode_t *dn)
 		return (err);
 	}
 
-	dmu_object_set_compress(dn->dn_objset, dn->dn_object, ZIO_COMPRESS_OFF, tx);
+	if (dn->dn_objset->os_compress != ZIO_COMPRESS_OFF) {
+		dmu_object_set_compress(dn->dn_objset, dn->dn_object, ZIO_COMPRESS_OFF, 
+			tx);
+	} else {
+		dmu_object_set_compress(dn->dn_objset, dn->dn_object, 
+			ZIO_COMPRESS_INHERIT, tx);
+	}
 
 	dmu_tx_commit(tx);
 	return 0;
@@ -955,7 +961,13 @@ enable_compression_for_dnode(dnode_t *dn)
 		return (err);
 	}
 
-	dmu_object_set_compress(dn->dn_objset, dn->dn_object, ZIO_COMPRESS_ON, tx);
+	if (dn->dn_objset->os_compress == ZIO_COMPRESS_OFF) {
+		dmu_object_set_compress(dn->dn_objset, dn->dn_object, ZIO_COMPRESS_ON, 
+			tx);
+	} else {
+		dmu_object_set_compress(dn->dn_objset, dn->dn_object, 
+			ZIO_COMPRESS_INHERIT, tx);
+	}
 
 	dmu_tx_commit(tx);
 	return 0;
