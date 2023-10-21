@@ -1042,23 +1042,10 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		arc_free_space = arc_free_memory();
 		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 
-		// If the file is small enough to fit in the ARC, prefetch it
-		if (arc_free_space > len) {
-			// Prefetch the data
-			dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
-				ZIO_PRIORITY_SPECULATIVE_PREFETCH, 0, 
-				prefetch_max);
-			break;
-		}
-
-		// Check if L2ARC is available
-//		if (L2ARC_dev_list->list_size > 0) {
-//			// Prefetch the data into the L2ARC
-//			dmu_prefetch(os, zp->z_id, 0, offset, len, ZIO_PRIORITY_ASYNC_READ, 
-//				ARC_FLAG_L2CACHE);
-//			break;
-//		}
-
+		// Prefetch the data
+		dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
+			ZIO_PRIORITY_SPECULATIVE_PREFETCH, 0, 
+			prefetch_max);
 		break;
 	/*
 	 * For POSIX_FADV_DONTNEED the caller is indicating that the file

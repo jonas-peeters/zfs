@@ -1019,7 +1019,30 @@ begin_wait:
 	hrtime_t now = gethrtime();
 	if (now < vq->vq_io_complete_ts + 
 		zfs_vdev_min_wait_before_speculative_prefetch) {
-		/* We were woken up too early, try again later */
+cancel_expired_prefetches:
+		if (vq->vq_cqueued & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH) == 0) {
+			mutex_exit(&vq->vq_lock);
+			goto out;
+		}
+		zio_t *cio = list_head(
+			&vq->vq_class[ZIO_PRIORITY_SPECULATIVE_PREFETCH].vqc_list);
+		if (cio == NULL) {
+			mutex_exit(&vq->vq_lock);
+			goto out;
+		}
+
+		/* Check if prefetch was scheduled over 5 minutes ago
+		 * If it was and is still in the queue, cancel it, as the disk
+		 * is currently busy and the application did not actually try to
+		 * read the block yet. Otherwise the prio would have been updated. */
+		if (cio->io_timestamp < now - 5LL * 60LL * 1000000000LL) {
+			vdev_queue_io_remove(vq, cio);
+			zio_destroy(cio);
+			cio = NULL;
+			goto cancel_expired_prefetches;
+		}
+
+		/* We were woken up too early anyway, try again later */
 		goto begin_wait;
 	}
 
