@@ -1035,12 +1035,13 @@ cancel_expired_prefetches:
 		 * If it was and is still in the queue, cancel it, as the disk
 		 * is currently busy and the application did not actually try to
 		 * read the block yet. Otherwise the prio would have been updated. */
-		if (cio->io_timestamp < now - 5LL * 60LL * 1000000000LL) {
+		/*if (cio->io_timestamp != NULL && 
+			cio->io_timestamp < now - 5LL * 60LL * 1000000000LL) {
 			vdev_queue_io_remove(vq, cio);
 			zio_destroy(cio);
 			cio = NULL;
 			goto cancel_expired_prefetches;
-		}
+		}*/
 
 		/* We were woken up too early anyway, try again later */
 		goto begin_wait;
