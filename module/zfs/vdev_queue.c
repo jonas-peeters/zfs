@@ -1020,7 +1020,7 @@ begin_wait:
 	if (now < vq->vq_io_complete_ts + 
 		zfs_vdev_min_wait_before_speculative_prefetch) {
 cancel_expired_prefetches:
-		if (vq->vq_cqueued & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH) == 0) {
+		if ((vq->vq_cqueued & (1U << ZIO_PRIORITY_SPECULATIVE_PREFETCH)) == 0) {
 			mutex_exit(&vq->vq_lock);
 			goto out;
 		}
