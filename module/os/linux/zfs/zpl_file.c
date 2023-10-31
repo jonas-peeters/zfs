@@ -1056,9 +1056,8 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		dmu_arc_evict(os, zp->z_id, 0, offset, len);
 		break;
 	case POSIX_FADV_NORMAL:
-		break;
 	case POSIX_FADV_NOREUSE:
-		/* ignored for now */
+		/* ignored */
 		break;
 	/*
 	 * ZFS_FADV_DOCOMPRESS and ZFS_FADV_DONTCOMPRESS are zfs specific
