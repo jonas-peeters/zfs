@@ -1067,7 +1067,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 	 * be compressed. ZFS_FADV_DONTCOMPRESS will cause all future writes
 	 * to the file to be uncompressed. These flags are persistent.
 	 */
-	case ZFS_FADV_DONTCOMPRESS: // ZFS_FADV_DONTCOMPRESS:
+	case ZFS_FADV_DONTCOMPRESS:
 		zdb = sa_get_db(zp->z_sa_hdl);
 		db = (dmu_buf_impl_t *)zdb;
 
@@ -1076,7 +1076,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		error = disable_compression_for_dnode(dn);
 		DB_DNODE_EXIT(db);
 		break;
-	case ZFS_FADV_DOCOMPRESS: // COMPRESS:
+	case ZFS_FADV_DOCOMPRESS:
 		zdb = sa_get_db(zp->z_sa_hdl);
 		db = (dmu_buf_impl_t *)zdb;
 
