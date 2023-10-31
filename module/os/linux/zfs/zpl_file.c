@@ -994,9 +994,6 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 	if ((error = zpl_enter_verify_zp(zfsvfs, zp, FTAG)) != 0)
 		return (error);
 
-	zfs_dbgmsg("zpl_fadvise: %d", advice);
-
-
 	dmu_buf_t *zdb;
 	dmu_buf_impl_t *db;
 	dnode_t *dn;
@@ -1061,16 +1058,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 	case POSIX_FADV_NORMAL:
 		break;
 	case POSIX_FADV_NOREUSE:
-		if (len == 0)
-			len = i_size_read(ip) - offset;
-
-		arc_free_space = arc_free_memory();
-		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
-		
-		dmu_prefetch_impl(os, zp->z_id, 0, offset, len, 
-			ZIO_PRIORITY_SPECULATIVE_PREFETCH, 
-			ARC_FLAG_UNCACHED, prefetch_max);
-
+		/* ignored for now */
 		break;
 	/*
 	 * ZFS_FADV_DOCOMPRESS and ZFS_FADV_DONTCOMPRESS are zfs specific

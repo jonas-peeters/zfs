@@ -145,7 +145,7 @@ static uint_t zfs_vdev_sync_read_min_active = 10;
 static uint_t zfs_vdev_sync_read_max_active = 10;
 static uint_t zfs_vdev_sync_write_min_active = 10;
 static uint_t zfs_vdev_sync_write_max_active = 10;
-static uint_t zfs_vdev_async_read_min_active = 0;
+static uint_t zfs_vdev_async_read_min_active = 1;
 /*  */ uint_t zfs_vdev_async_read_max_active = 3;
 static uint_t zfs_vdev_async_write_min_active = 2;
 /*  */ uint_t zfs_vdev_async_write_max_active = 10;
@@ -167,7 +167,7 @@ static uint_t zfs_vdev_rebuild_max_active = 3;
  * after the last I/O completed.  This is to prevent speculative prefetches
  * from interfering with interactive I/Os.
  */
-static long zfs_vdev_min_wait_before_speculative_prefetch = 500000000L;
+static long zfs_vdev_min_wait_before_speculative_prefetch = 100000000L;
 
 /*
  * When the pool has less than zfs_vdev_async_write_active_min_dirty_percent
@@ -1035,13 +1035,13 @@ cancel_expired_prefetches:
 		 * If it was and is still in the queue, cancel it, as the disk
 		 * is currently busy and the application did not actually try to
 		 * read the block yet. Otherwise the prio would have been updated. */
-		/*if (cio->io_timestamp != NULL && 
+		if (cio->io_timestamp != NULL && 
 			cio->io_timestamp < now - 5LL * 60LL * 1000000000LL) {
 			vdev_queue_io_remove(vq, cio);
 			zio_destroy(cio);
 			cio = NULL;
 			goto cancel_expired_prefetches;
-		}*/
+		}
 
 		/* We were woken up too early anyway, try again later */
 		goto begin_wait;

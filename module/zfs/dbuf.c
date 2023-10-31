@@ -3526,7 +3526,6 @@ dbuf_prefetch_impl(dnode_t *dn, int64_t level, uint64_t blkid,
 	 */
 	curlevel = level;
 	curblkid = blkid;
-	// zfs_dbgmsg("curlevel: %d curblkid: %d for %llu:%llu:%llu", curlevel, curblkid, dn->dn_object, level, blkid);
 	while (curlevel < nlevels - 1) {
 		int parent_level = curlevel + 1;
 		uint64_t parent_blkid = curblkid >> epbs;

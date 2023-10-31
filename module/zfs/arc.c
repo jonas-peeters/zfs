@@ -5246,7 +5246,7 @@ arc_access(arc_buf_hdr_t *hdr, arc_flags_t arc_flags, boolean_t hit)
 		 */
 		ASSERT0(hdr->b_l1hdr.b_arc_access);
 		hdr->b_l1hdr.b_arc_access = now;
-		if (HDR_UNCACHED(hdr) && !now_prefetch) {
+		if (HDR_UNCACHED(hdr)) {
 			new_state = arc_uncached;
 			DTRACE_PROBE1(new_state__uncached, arc_buf_hdr_t *,
 			    hdr);
@@ -6184,7 +6184,6 @@ top:
 				}
 			}
 		}
-		//zfs_dbgmsg("ARC issue zio_read with priority %d", priority);
 		rzio = zio_read(pio, spa, bp, hdr_abd, size,
 		    arc_read_done, hdr, priority, zio_flags, zb);
 		acb->acb_zio_head = rzio;
