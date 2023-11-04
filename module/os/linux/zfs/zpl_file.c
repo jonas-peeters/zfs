@@ -1003,6 +1003,7 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 	switch (advice) {
 	case POSIX_FADV_SEQUENTIAL:
 	case POSIX_FADV_WILLNEED:
+	case POSIX_FADV_NOREUSE:
 #ifdef HAVE_GENERIC_FADVISE
 		if (zn_has_cached_data(zp, offset, offset + len - 1))
 			error = generic_fadvise(filp, offset, len, advice);
@@ -1019,8 +1020,8 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		arc_free_space = arc_free_memory();
 		prefetch_max = max(default_dmu_prefetch_max, arc_free_space);
 
-		zio_priority_t priority = advice == POSIX_FADV_WILLNEED ? 
-			ZIO_PRIORITY_ASYNC_READ : ZIO_PRIORITY_SPECULATIVE_PREFETCH;
+		zio_priority_t priority = advice == POSIX_FADV_SEQUENTIAL ? 
+			ZIO_PRIORITY_SPECULATIVE_PREFETCH : ZIO_PRIORITY_ASYNC_READ;
 
 		dmu_prefetch_impl(os, zp->z_id, 0, offset, len,
 		    priority, 0, prefetch_max);
@@ -1056,7 +1057,6 @@ zpl_fadvise(struct file *filp, loff_t offset, loff_t len, int advice)
 		dmu_arc_evict(os, zp->z_id, 0, offset, len);
 		break;
 	case POSIX_FADV_NORMAL:
-	case POSIX_FADV_NOREUSE:
 		/* ignored */
 		break;
 	/*

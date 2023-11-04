@@ -4052,10 +4052,8 @@ arc_evict_blk(spa_t *spa, const blkptr_t *bp) {
 		if (HDR_HAS_L1HDR(hdr)) {
 			uint64_t bytes_evicted;
 			arc_evict_hdr(hdr, &bytes_evicted);
-		} else {
 		}
 		mutex_exit(hash_lock);
-	} else {
 	}
 }
 
